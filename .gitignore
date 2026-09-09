@@ -13,3 +13,4 @@ coverage/
 artifacts/
 .idea/
 .vscode/
+src-tauri/gen/

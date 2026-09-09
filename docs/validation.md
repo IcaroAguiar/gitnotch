@@ -1,5 +1,5 @@
 # Validação
 
-Registre aqui verificações reproduzíveis do aplicativo quando houver implementação. Ainda não existem build, CI ou plataformas validadas.
+- [Aplicação mínima](validation/minimal-desktop.md). Build e janela macOS verificados; teste visual offline ainda pendente.
 
-O planejamento e os registros administrativos de preparação são locais e não fazem parte da documentação pública.
+Builds de CI não comprovam interação nativa. Planejamento e registros administrativos permanecem locais.

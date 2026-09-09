@@ -1,0 +1,16 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "src/**",
+      "tests/**",
+      "*.json",
+      "vite.config.ts",
+      "index.html",
+      "src-tauri/tauri.conf.json"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2 },
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
+}
