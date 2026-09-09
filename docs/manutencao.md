@@ -1,6 +1,6 @@
 # Manutenção pelo responsável e seus agentes
 
-Este fluxo orienta o trabalho do mantenedor com agentes nos tickets atribuídos.
+Este fluxo orienta o trabalho do mantenedor com agentes nas tarefas atribuídas.
 
 ## Prepare a alteração
 
@@ -10,7 +10,7 @@ Este fluxo orienta o trabalho do mantenedor com agentes nos tickets atribuídos.
 4. Registre comandos reproduzíveis e resultados. Abra uma PR usando o template.
 5. Aguarde revisão do mantenedor. Não habilite auto-merge por conta própria.
 
-Ainda não existem comandos de build ou CI. GN-01A deve introduzi-los junto com a aplicação. Não adicione checks que apenas retornam sucesso sem verificar algo.
+Ainda não existem comandos de build ou CI. A aplicação mínima deve introduzi-los junto com a aplicação. Não adicione checks que apenas retornam sucesso sem verificar algo.
 
 ## Mantenha o repositório enxuto
 

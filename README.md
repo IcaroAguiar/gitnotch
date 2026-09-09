@@ -4,7 +4,7 @@ Utilitário desktop local para acompanhar alterações de vários checkouts Git 
 
 ## Estado do projeto
 
-O projeto está em preparação. Este repositório contém a especificação, o plano de implementação e as regras de manutenção. Ainda não há aplicativo executável, instalador ou plataforma validada.
+O projeto está em preparação. Este repositório contém a especificação e as regras de manutenção. Ainda não há aplicativo executável, instalador ou plataforma validada.
 
 A stack planejada é Tauri 2, React/TypeScript e Rust. O frontend será empacotado localmente. O Git instalado será a fonte de estado dos checkouts.
 
@@ -20,17 +20,15 @@ Editor, terminal, conta, sincronização, telemetria remota e atualizador autom�
 ## Documentação
 
 - [Especificação v0.1](git-notch-spec-v0.1.md).
-- [Backlog por marco](git-notch-backlog-v0.1.md).
-- [Tickets de implementação](docs/tickets/README.md).
 - [Política de contribuições](CONTRIBUTING.md).
 - [Regras para agentes](AGENTS.md).
 - [Registros de validação](docs/validation.md).
 
-Os comandos de desenvolvimento serão adicionados com a aplicação mínima em GN-01A. Nenhuma instalação global é necessária para ler ou revisar esta documentação.
+Os comandos de desenvolvimento serão adicionados com a aplicação mínima. Nenhuma instalação global é necessária para ler ou revisar esta documentação.
 
 ## Projeto pessoal
 
-O código é disponibilizado para uso e adaptação sob a licença MIT. Não aceitamos contribuições externas ou PRs não solicitadas e não oferecemos compromisso de suporte. O desenvolvimento segue os tickets escolhidos pelo mantenedor.
+O código é disponibilizado para uso e adaptação sob a licença MIT. Não aceitamos contribuições externas ou PRs não solicitadas e não oferecemos compromisso de suporte. O desenvolvimento é conduzido pelo mantenedor.
 
 ## Licença
 

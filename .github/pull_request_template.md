@@ -1,6 +1,6 @@
 ## Resultado
 
-Ticket local e issue, se existir:
+Descreva o objetivo da alteração sem publicar o planejamento privado.
 
 Descreva o comportamento antes e depois desta alteração.
 
