@@ -27,7 +27,7 @@ Siga instruções da plataforma, o pedido atual do usuário e estas regras, ness
 
 ## Higiene de publicação
 
-Leia `CONTRIBUTING.md` antes de publicar. Versione somente materiais necessários ao produto e à manutenção. Notas privadas ficam em `.local/`; resultados brutos em `artifacts/`. Não versione transcrições, builds, instaladores, caches, credenciais ou fixtures extraídas de projetos pessoais. Revise o histórico a enviar, incluindo metadados de autoria. Não reescreva histórico sem autorização. Nunca apresente como habilitada uma proteção ou um canal de segurança que ainda não foi configurado.
+Leia `CONTRIBUTING.md` e `docs/manutencao.md` antes de publicar. O repositório é pessoal e não aceita contribuições externas. As PRs deste fluxo são entregas dos agentes ao mantenedor. Versione somente materiais necessários ao produto e à manutenção. Notas privadas ficam em `.local/`; resultados brutos em `artifacts/`. Não versione transcrições, builds, instaladores, caches, credenciais ou fixtures extraídas de projetos pessoais. Revise o histórico a enviar, incluindo metadados de autoria. Não reescreva histórico sem autorização. Nunca apresente como habilitada uma proteção ou um canal de segurança que ainda não foi configurado.
 
 ## Ferramentas e dependências
 
