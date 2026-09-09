@@ -30,4 +30,4 @@ Os comandos de desenvolvimento serão adicionados com a aplicação mínima em G
 
 ## Licença
 
-O mantenedor pretende distribuir o projeto como open source. A licença ainda está pendente de escolha; a intenção e a visibilidade pública não substituem um arquivo LICENSE. Não há concessão de licença open source declarada nesta preparação.
+Distribuído sob a [licença MIT](LICENSE). As licenças das dependências permanecem aplicáveis aos respectivos componentes.

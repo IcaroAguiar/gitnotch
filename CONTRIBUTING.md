@@ -32,4 +32,4 @@ Registre ambientes indisponíveis como não testados. Não publique dados de per
 
 Inclua comportamento esperado, comportamento observado, ambiente e reprodução mínima sem dados pessoais. Para possível exposição de dados ou vulnerabilidade, siga [SECURITY.md](SECURITY.md).
 
-A licença do projeto deve ser definida antes da abertura para contribuições de código de terceiros.
+O projeto usa a licença MIT. Contribua somente com material que você tenha direito de disponibilizar sob essa licença.

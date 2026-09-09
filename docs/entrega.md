@@ -6,7 +6,7 @@ Os documentos originais permanecem normativos para o produto. O [índice de tick
 
 Delegue [GN-00](tickets/GN-00.md). O primeiro commit preserva os documentos na `main`. A branch seguinte contém as regras e este plano, formando a primeira PR revisável. Sem um commit de base, não há comparação útil para essa primeira PR.
 
-Destino, visibilidade e licença ainda não foram escolhidos. O agente pode preparar o Git local e deve pedir somente os dados necessários para a publicação quando chegar a esse passo.
+O remoto autorizado é `https://github.com/IcaroAguiar/gitnotch`, público, com licença MIT. Use esse destino para as PRs deste projeto.
 
 ## Entregue um ticket ao agente
 

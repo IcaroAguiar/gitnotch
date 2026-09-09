@@ -48,4 +48,4 @@ Use Portly do PATH para servidores persistentes elegíveis no checkout principal
 
 ## Estado inicial
 
-Este pacote contém planejamento e regras. Ainda não existem aplicação, scripts de build, CI ou remoto configurado. O ticket GN-00 prepara o Git. GN-01A introduz os comandos reais de desenvolvimento e validação.
+Este pacote contém planejamento e regras. Ainda não existem aplicação, scripts de build, CI. O remoto público é `https://github.com/IcaroAguiar/gitnotch` e a licença é MIT. O ticket GN-00 prepara o Git. GN-01A introduz os comandos reais de desenvolvimento e validação.

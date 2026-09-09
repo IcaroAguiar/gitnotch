@@ -1,6 +1,6 @@
 # Tickets para entregar uma PR por vez
 
-GN-00 está em avaliação local, com remoto e PR pendentes. Os demais tickets estão planejados e aguardam aceite do anterior. Uma linha representa uma PR planejada, não uma PR publicada.
+GN-00 está em avaliação, com remoto público criado e PR em preparação. Os demais tickets estão planejados e aguardam aceite do anterior. Uma linha representa uma PR planejada, não uma PR publicada.
 
 A sequência é deliberadamente linear para permitir avaliação entre entregas. As dependências abaixo são também portões de revisão. O backlog original continua sendo a referência de cobertura.
 
