@@ -1,0 +1,13 @@
+[package]
+name = "gitnotch"
+version = "0.1.0"
+description = "Local read-only Git diff drawer"
+edition = "2024"
+rust-version = "1.98.1"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.11.5", features = [] }

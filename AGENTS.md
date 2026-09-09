@@ -41,11 +41,11 @@ Use Portly do PATH para servidores persistentes elegíveis no checkout principal
 - Mudanças Git exigem fixtures reais, comparação com o Git direto sob a mesma política e prova de não mutação, conforme seção 16.1.
 - Mudanças IPC exigem testes de autorização e respostas obsoletas quando aplicável.
 - Mudanças de UI exigem prova visual. Foco, hit-testing, material, monitores e recursos exigem build nativo. Browser ou screenshot conceitual não comprovam esses itens.
-- Registre comandos, resultado, ambiente, SHA verificado e roteiro reproduzível em `docs/validation/<ticket>.md`. Separe teste automatizado, teste nativo e não testado. Nunca aprove uma plataforma por inferência.
+- Registre comandos, resultado, ambiente, SHA verificado e roteiro reproduzível em `docs/validation/<alteracao>.md`. Separe teste automatizado, teste nativo e não testado. Nunca aprove uma plataforma por inferência.
 - Registre decisões duráveis em `docs/decisions.md`. Não transforme hipótese em decisão validada.
 - Use o template de PR. Entregue como pronto para avaliação somente com os critérios obrigatórios verificados. Se faltar teste nativo, mantenha como pendente de validação.
 - Pare ao entregar o ticket. O usuário avalia, testa e decide o merge.
 
-## Estado inicial
+## Estado atual
 
-Este pacote contém planejamento e regras. Ainda não existem aplicação, scripts de build, CI. O remoto público é `https://github.com/IcaroAguiar/gitnotch` e a licença é MIT. A implementação inicial introduzirá os comandos reais de desenvolvimento e validação.
+A aplicação mínima usa builds pontuais. Leia os comandos de desenvolvimento no README e os limites em docs/validation.md. O remoto público é `https://github.com/IcaroAguiar/gitnotch` e a licença é MIT. Planejamento e tickets continuam privados.
