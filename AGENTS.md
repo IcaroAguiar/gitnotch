@@ -25,7 +25,11 @@ Siga instruções da plataforma, o pedido atual do usuário e estas regras, ness
 - Não acrescente editor, terminal, stage, commit, rede, telemetria, conta ou atualizador ao produto.
 - Não crie uma camada genérica para cada módulo sugerido na spec. Introduza módulos quando o ticket precisar deles.
 
-## Dependências e execução
+## Higiene de publicação
+
+Leia `CONTRIBUTING.md` antes de publicar. Versione somente materiais necessários ao produto e à manutenção. Notas privadas ficam em `.local/`; resultados brutos em `artifacts/`. Não versione transcrições, builds, instaladores, caches, credenciais ou fixtures extraídas de projetos pessoais. Revise o histórico a enviar, incluindo metadados de autoria. Não reescreva histórico sem autorização. Nunca apresente como habilitada uma proteção ou um canal de segurança que ainda não foi configurado.
+
+## Ferramentas e dependências
 
 Verifique compatibilidade e licenças nas fontes oficiais ao adicionar dependências. Versões citadas na pesquisa são candidatas. Versione os lockfiles. Não copie código GPL sem decisão explícita sobre licença.
 

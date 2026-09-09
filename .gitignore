@@ -6,3 +6,10 @@ target/
 .env.*
 !.env.example
 !AGENTS.md
+*.log
+coverage/
+.cache/
+.local/
+artifacts/
+.idea/
+.vscode/
