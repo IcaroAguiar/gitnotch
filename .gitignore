@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+dist/
+target/
+.env
+.env.*
+!.env.example
+!AGENTS.md
+*.log
+coverage/
+.cache/
+.local/
+artifacts/
+.idea/
+.vscode/
