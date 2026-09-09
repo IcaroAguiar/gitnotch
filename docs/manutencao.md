@@ -27,4 +27,3 @@ Não acrescente dependências ou automações sem necessidade do ticket. Version
 Use fixtures temporárias para operações Git que exigem escrita. Nunca prepare testes alterando repositórios pessoais observados pelo aplicativo. Mudanças de leitura Git precisam comprovar resultados e ausência de mutação. Mudanças de integração desktop precisam de teste nativo, não somente browser.
 
 Registre ambientes indisponíveis como não testados. Não publique dados de performance estimados como medições. Antes do commit, confira git diff --cached e git diff --cached --check. Antes da publicação, revise também os commits que serão enviados; remover um arquivo no último commit não remove seu conteúdo do histórico.
-
