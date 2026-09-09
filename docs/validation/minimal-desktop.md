@@ -2,13 +2,16 @@
 
 Ambiente local: macOS 26.6.2, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1.
 
+Código verificado: `44d2b92`. Alterações posteriores deste registro são apenas documentação.
+
 ## Verificações locais
 
 - `pnpm check`: lint, typecheck e dois testes do contrato de configuração passaram.
 - `pnpm build`: assets estáticos produzidos em dist.
+- Cópia Git limpa de `44d2b92`: `pnpm install --offline --frozen-lockfile`, `pnpm check` e `pnpm desktop:build -- --locked --offline` passaram. Foram reutilizados o store pnpm, o toolchain e o cache Rust; nenhum arquivo não versionado de implementação foi necessário.
 - `pnpm rust:check`: rustfmt e Clippy sem warnings; test runner Rust concluiu com zero testes. Não há lógica de domínio nesta etapa.
 - `pnpm desktop:bundle --bundles app -- --locked`: pacote macOS gerado.
-- Abertura pelo LaunchServices: janela Git Notch exibiu a mensagem de desenvolvimento. O WebView carregou `tauri://localhost`, sem servidor Vite. Captura nativa mantida como artefato local, fora do Git.
+- Abertura pelo LaunchServices: janela Git Notch exibiu a mensagem de desenvolvimento. O WebView carregou `tauri://localhost`, sem servidor Vite. Captura nativa mantida como artefato local, fora do Git. Cmd+Q encerrou o processo, confirmado por ausência de processo gitnotch após a ação.
 
 ## Reproduzir
 
