@@ -4,6 +4,12 @@
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --motion-hover: 110ms;
+  --motion-open: 220ms;
+  --motion-close: 170ms;
+  --motion-reduced: 80ms;
+  --ease-open: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-close: cubic-bezier(0.4, 0, 1, 1);
 }
 
 * {
@@ -24,7 +30,7 @@ body {
 
 html[data-window="notch"] #root {
   display: grid;
-  place-items: center;
+  place-items: center end;
 }
 
 .notch-tab {
@@ -34,17 +40,24 @@ html[data-window="notch"] #root {
   display: grid;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: 12px;
+  border-right: none;
+  border-radius: 12px 0 0 12px;
   background: #23272a;
   cursor: default;
   transition:
-    background-color 110ms ease-out,
-    border-color 110ms ease-out;
+    background-color var(--motion-hover) var(--ease-open),
+    border-color var(--motion-hover) var(--ease-open),
+    transform var(--motion-hover) var(--ease-open);
 }
 
 .notch-tab:hover {
   background: #32383c;
   border-color: rgb(255 255 255 / 22%);
+  transform: translateX(-1px);
+}
+
+.notch-tab:active {
+  transform: translateX(-2px);
 }
 
 .notch-tab:focus-visible {
@@ -67,6 +80,20 @@ html[data-window="notch"] #root {
   border-radius: 20px;
   background: #1b1e20;
   overflow: hidden;
+  opacity: 0;
+  transform: translateX(14px) scale(0.985);
+  transform-origin: right center;
+  transition:
+    opacity var(--motion-close) var(--ease-close),
+    transform var(--motion-close) var(--ease-close);
+}
+
+.drawer--open {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-open) var(--ease-open),
+    transform var(--motion-open) var(--ease-open);
 }
 
 .drawer-header {
@@ -91,7 +118,7 @@ html[data-window="notch"] #root {
   border-radius: 8px;
   background: transparent;
   cursor: default;
-  transition: background-color 110ms ease-out;
+  transition: background-color var(--motion-hover) var(--ease-open);
 }
 
 .drawer-close:hover {
@@ -107,6 +134,33 @@ html[data-window="notch"] #root {
   color: #b3b7b9;
   font-size: 14px;
   line-height: 1.6;
+}
+
+@supports (corner-shape: squircle) {
+  .notch-tab,
+  .drawer {
+    corner-shape: squircle;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notch-tab {
+    transition-duration: 1ms;
+  }
+
+  .notch-tab:hover,
+  .notch-tab:active {
+    transform: none;
+  }
+
+  .drawer {
+    transform: none;
+    transition: opacity var(--motion-reduced) linear;
+  }
+
+  .drawer--open {
+    transition: opacity var(--motion-reduced) linear;
+  }
 }
 
 @media (prefers-color-scheme: light) {

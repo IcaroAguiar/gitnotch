@@ -2,15 +2,17 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
 
 pub const NOTCH_LABEL: &str = "notch";
 pub const DRAWER_LABEL: &str = "drawer";
+pub const DRAWER_STATE_EVENT: &str = "gitnotch://drawer-state";
 
 const DRAWER_WIDTH: u32 = 600;
 const DRAWER_MAX_HEIGHT: u32 = 800;
 const DRAWER_MARGIN: u32 = 12;
 const DRAWER_HEIGHT_MARGIN: u32 = 24;
+const DRAWER_CLOSE_MS: u64 = 180;
 const TOGGLE_AFTER_COLLAPSE: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -37,8 +39,8 @@ pub struct DesktopView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DrawerAction {
-    Show,
-    Hide,
+    Show(u64),
+    Hide(u64),
     Unchanged,
 }
 
@@ -71,6 +73,10 @@ impl DesktopState {
         }
     }
 
+    pub fn is_current(&self, generation: u64) -> bool {
+        self.generation == generation
+    }
+
     pub fn toggle(&mut self, now: Instant) -> DrawerAction {
         match self.drawer {
             DrawerState::Open => self.close(),
@@ -101,13 +107,13 @@ impl DesktopState {
     fn open(&mut self) -> DrawerAction {
         self.drawer = DrawerState::Open;
         self.generation += 1;
-        DrawerAction::Show
+        DrawerAction::Show(self.generation)
     }
 
     fn close(&mut self) -> DrawerAction {
         self.drawer = DrawerState::Closed;
         self.generation += 1;
-        DrawerAction::Hide
+        DrawerAction::Hide(self.generation)
     }
 }
 
@@ -184,22 +190,57 @@ pub fn collapse_drawer(app: &AppHandle) {
 fn apply(app: &AppHandle, action: DrawerAction) -> Result<(), String> {
     match action {
         DrawerAction::Unchanged => Ok(()),
-        DrawerAction::Show => show_drawer(app),
-        DrawerAction::Hide => hide_drawer(app),
+        DrawerAction::Show(generation) => show_drawer(app, generation),
+        DrawerAction::Hide(generation) => hide_drawer(app, generation),
     }
 }
 
-fn show_drawer(app: &AppHandle) -> Result<(), String> {
+fn show_drawer(app: &AppHandle, generation: u64) -> Result<(), String> {
     let window = drawer_window(app)?;
     place_drawer(app, &window)?;
     window.show().map_err(|error| error.to_string())?;
-    window.set_focus().map_err(|error| error.to_string())
+    window.set_focus().map_err(|error| error.to_string())?;
+    window
+        .emit(
+            DRAWER_STATE_EVENT,
+            DesktopView {
+                drawer: DrawerState::Open,
+                generation,
+            },
+        )
+        .map_err(|error| error.to_string())
 }
 
-fn hide_drawer(app: &AppHandle) -> Result<(), String> {
-    drawer_window(app)?
-        .hide()
-        .map_err(|error| error.to_string())
+fn hide_drawer(app: &AppHandle, generation: u64) -> Result<(), String> {
+    let window = drawer_window(app)?;
+    window
+        .emit(
+            DRAWER_STATE_EVENT,
+            DesktopView {
+                drawer: DrawerState::Closed,
+                generation,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+    let app = app.clone();
+    let _ = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(DRAWER_CLOSE_MS));
+        if hide_is_current(&app, generation)
+            && let Some(window) = app.get_webview_window(DRAWER_LABEL)
+        {
+            let _ = window.hide();
+        }
+    });
+
+    Ok(())
+}
+
+fn hide_is_current(app: &AppHandle, generation: u64) -> bool {
+    app.state::<Mutex<DesktopState>>()
+        .lock()
+        .map(|state| state.is_current(generation))
+        .unwrap_or(false)
 }
 
 fn drawer_window(app: &AppHandle) -> Result<WebviewWindow, String> {
@@ -402,10 +443,10 @@ mod tests {
         let now = Instant::now();
 
         assert_eq!(state.view().drawer, DrawerState::Closed);
-        assert_eq!(state.toggle(now), DrawerAction::Show);
+        assert_eq!(state.toggle(now), DrawerAction::Show(2));
         assert_eq!(state.view().drawer, DrawerState::Open);
         assert_eq!(state.view().generation, 2);
-        assert_eq!(state.toggle(now), DrawerAction::Hide);
+        assert_eq!(state.toggle(now), DrawerAction::Hide(3));
         assert_eq!(state.view().drawer, DrawerState::Closed);
         assert_eq!(state.view().generation, 3);
     }
@@ -416,8 +457,8 @@ mod tests {
         let now = Instant::now();
 
         assert_eq!(state.collapse(now), DrawerAction::Unchanged);
-        assert_eq!(state.toggle(now), DrawerAction::Show);
-        assert_eq!(state.collapse(now), DrawerAction::Hide);
+        assert_eq!(state.toggle(now), DrawerAction::Show(2));
+        assert_eq!(state.collapse(now), DrawerAction::Hide(3));
         assert_eq!(state.view().drawer, DrawerState::Closed);
     }
 
@@ -426,8 +467,8 @@ mod tests {
         let mut state = DesktopState::new();
         let now = Instant::now();
 
-        assert_eq!(state.toggle(now), DrawerAction::Show);
-        assert_eq!(state.collapse(now), DrawerAction::Hide);
+        assert_eq!(state.toggle(now), DrawerAction::Show(2));
+        assert_eq!(state.collapse(now), DrawerAction::Hide(3));
         assert_eq!(
             state.toggle(now + Duration::from_millis(100)),
             DrawerAction::Unchanged
@@ -435,7 +476,20 @@ mod tests {
         assert_eq!(state.view().drawer, DrawerState::Closed);
         assert_eq!(
             state.toggle(now + Duration::from_millis(600)),
-            DrawerAction::Show
+            DrawerAction::Show(4)
         );
+    }
+
+    #[test]
+    fn apenas_a_geracao_mais_recente_autoriza_esconder() {
+        let mut state = DesktopState::new();
+
+        assert!(state.is_current(1));
+        assert_eq!(state.toggle(Instant::now()), DrawerAction::Show(2));
+        assert!(state.is_current(2));
+        assert!(!state.is_current(1));
+        assert_eq!(state.collapse(Instant::now()), DrawerAction::Hide(3));
+        assert!(state.is_current(3));
+        assert!(!state.is_current(2));
     }
 }

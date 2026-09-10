@@ -40,6 +40,21 @@ test("a aba não rouba foco e a gaveta começa recolhida", () => {
   assert.equal(drawer.decorations, false);
 });
 
+test("a gaveta recebe apenas o canal de eventos do estado", async () => {
+  const capability = JSON.parse(
+    await readFile(
+      new URL("../src-tauri/capabilities/drawer.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  assert.deepEqual(capability.windows, ["drawer"]);
+  assert.deepEqual(capability.permissions, [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+  ]);
+});
+
 test("a prévia não concede capacidades nativas e limita conexões ao IPC", () => {
   assert.deepEqual(config.app.security.capabilities, []);
   assert.equal(config.app.macOSPrivateApi, true);
