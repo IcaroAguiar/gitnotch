@@ -14,19 +14,27 @@ struct AppState {
     git_reader: Mutex<Option<GitReader>>,
 }
 
+impl AppState {
+    fn with_git_reader<T, F>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&GitReader) -> Result<T, GitError>,
+    {
+        let mut guard = self
+            .git_reader
+            .lock()
+            .map_err(|e| format!("Falha de sincronização interna: {e}"))?;
+
+        if guard.is_none() {
+            *guard = Some(GitReader::new().map_err(|e| e.to_string())?);
+        }
+
+        f(guard.as_ref().unwrap()).map_err(|e| e.to_string())
+    }
+}
+
 #[tauri::command]
 fn get_git_capabilities(state: State<AppState>) -> Result<GitCapabilities, String> {
-    let mut reader_guard = state
-        .git_reader
-        .lock()
-        .map_err(|e| format!("Falha de sincronização interna: {e}"))?;
-
-    if reader_guard.is_none() {
-        let reader = GitReader::new().map_err(|e| e.to_string())?;
-        *reader_guard = Some(reader);
-    }
-
-    Ok(reader_guard.as_ref().unwrap().capabilities().clone())
+    state.with_git_reader(|reader| Ok(reader.capabilities().clone()))
 }
 
 #[tauri::command]
@@ -42,21 +50,7 @@ fn get_repo_status(
         );
     }
 
-    let mut reader_guard = state
-        .git_reader
-        .lock()
-        .map_err(|e| format!("Falha de sincronização interna: {e}"))?;
-
-    if reader_guard.is_none() {
-        let reader = GitReader::new().map_err(|e| e.to_string())?;
-        *reader_guard = Some(reader);
-    }
-
-    reader_guard
-        .as_ref()
-        .unwrap()
-        .status(path)
-        .map_err(|e| e.to_string())
+    state.with_git_reader(|reader| reader.status(path))
 }
 
 #[tauri::command]
@@ -75,21 +69,7 @@ fn get_file_diff(
         );
     }
 
-    let mut reader_guard = state
-        .git_reader
-        .lock()
-        .map_err(|e| format!("Falha de sincronização interna: {e}"))?;
-
-    if reader_guard.is_none() {
-        let reader = GitReader::new().map_err(|e| e.to_string())?;
-        *reader_guard = Some(reader);
-    }
-
-    reader_guard
-        .as_ref()
-        .unwrap()
-        .diff(path, &rel_path, orig_path.as_deref(), group)
-        .map_err(|e| e.to_string())
+    state.with_git_reader(|reader| reader.diff(path, &rel_path, orig_path.as_deref(), group))
 }
 
 fn main() {

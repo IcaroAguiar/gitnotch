@@ -44,19 +44,22 @@ impl GitReader {
         check_external_filters(&self.git_executable, worktree)
     }
 
-    pub fn status(&self, worktree: &Path) -> Result<RepoStatusSnapshot, GitError> {
-        let filter_status = self.check_filters(worktree)?;
+    fn ensure_filters_allowed(&self, worktree: &Path) -> Result<(), GitError> {
         if let FilterPreflightResult::LimitedByExternalFilter {
             filter_name,
             reason,
-        } = filter_status
+        } = self.check_filters(worktree)?
         {
             return Err(GitError::LimitedByExternalFilter {
                 filter_name,
                 reason,
             });
         }
+        Ok(())
+    }
 
+    pub fn status(&self, worktree: &Path) -> Result<RepoStatusSnapshot, GitError> {
+        self.ensure_filters_allowed(worktree)?;
         get_repo_status(&self.git_executable, worktree)
     }
 
@@ -68,17 +71,7 @@ impl GitReader {
         group: FileGroupKind,
     ) -> Result<DiffPatch, GitError> {
         if group != FileGroupKind::Untracked {
-            let filter_status = self.check_filters(worktree)?;
-            if let FilterPreflightResult::LimitedByExternalFilter {
-                filter_name,
-                reason,
-            } = filter_status
-            {
-                return Err(GitError::LimitedByExternalFilter {
-                    filter_name,
-                    reason,
-                });
-            }
+            self.ensure_filters_allowed(worktree)?;
         }
 
         get_file_diff(&self.git_executable, worktree, rel_path, orig_path, group)
