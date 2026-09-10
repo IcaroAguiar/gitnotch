@@ -15,5 +15,7 @@ As versões abaixo são as resolvidas para a aplicação mínima. Consulte os lo
 | Tipos Node | 22.20.1 | MIT | Desenvolvimento |
 | Tipos React | 19.2.18 | MIT | Desenvolvimento |
 | Tipos React DOM | 19.2.5 | MIT | Desenvolvimento |
+| serde | 1.0.229 | MIT ou Apache-2.0 | Serialização de tipos e modelos de domínio |
+| serde_json | 1.0.151 | MIT ou Apache-2.0 | Serialização de dados para IPC |
 
 As licenças foram consultadas nos metadados npm e nos manifests dos crates baixados. A lista não substitui os textos de licença nem a revisão transitiva necessária para uma release distribuída. `pnpm licenses list` permite inspecionar a árvore JavaScript instalada.
