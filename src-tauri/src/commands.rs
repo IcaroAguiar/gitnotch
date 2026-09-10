@@ -25,9 +25,12 @@ fn ensure_relative_path(value: &str) -> Result<(), String> {
     let path = Path::new(value);
     let rejected = value.is_empty()
         || path.is_absolute()
-        || path
-            .components()
-            .any(|component| matches!(component, Component::ParentDir | Component::Prefix(_)));
+        || path.components().any(|component| {
+            matches!(
+                component,
+                Component::ParentDir | Component::RootDir | Component::Prefix(_)
+            )
+        });
 
     if rejected {
         return Err(format!("Caminho relativo inválido: '{value}'"));

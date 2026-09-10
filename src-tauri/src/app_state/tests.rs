@@ -59,15 +59,14 @@ fn authorize_persists_canonical_root_and_increments_epoch() {
     );
     assert!(view.roots[0].available);
 
-    let persisted = fs::read_to_string(dir.path().join("config").join("settings.json")).unwrap();
-    assert!(persisted.contains("\"id\": \"r1\""));
-    assert!(
-        persisted.contains(
-            &fs::canonicalize(&root)
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-        )
+    let persisted: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(dir.path().join("config").join("settings.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(persisted["roots"][0]["id"], "r1");
+    assert_eq!(
+        persisted["roots"][0]["path"].as_str().unwrap(),
+        fs::canonicalize(&root).unwrap().to_string_lossy()
     );
 }
 
