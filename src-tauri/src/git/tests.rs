@@ -26,7 +26,6 @@ impl TestRepo {
         let path = std::env::temp_dir().join(dir_name);
         fs::create_dir_all(&path).expect("Falha ao criar diretório temporário para fixture");
 
-        // Initialize git repo without committing yet
         let status = Command::new("git")
             .arg("init")
             .arg("-b")
@@ -36,7 +35,6 @@ impl TestRepo {
             .expect("Falha ao executar git init");
         assert!(status.success());
 
-        // Configure dummy user for commits
         let _ = Command::new("git")
             .arg("-C")
             .arg(&path)
@@ -115,7 +113,6 @@ fn test_output_limit_kills_process() {
     let reader = GitReader::new().unwrap();
     let repo = TestRepo::new("limit");
 
-    // Write a file with repeated text
     let mut large_content = Vec::new();
     for i in 0..10_000 {
         large_content.extend_from_slice(
@@ -124,7 +121,6 @@ fn test_output_limit_kills_process() {
     }
     repo.write_file("big.txt", &large_content);
 
-    // Limit to 4 bytes
     let args = [
         std::ffi::OsStr::new("status"),
         std::ffi::OsStr::new("--porcelain=v2"),
@@ -151,10 +147,8 @@ fn test_unborn_repository() {
     let reader = GitReader::new().unwrap();
     let repo = TestRepo::new("unborn");
 
-    // Fresh repo: no commits yet
     repo.write_file("staged.txt", b"conteudo staged");
     repo.git(&["add", "staged.txt"]);
-
     repo.write_file("untracked.txt", b"conteudo untracked");
 
     let status = reader
@@ -175,13 +169,11 @@ fn test_unborn_repository() {
     assert_eq!(status.untracked[0].path, "untracked.txt");
     assert_eq!(status.untracked[0].group, FileGroupKind::Untracked);
 
-    // Diff staged on unborn repo must not fail even without HEAD
     let staged_diff = reader
         .diff(&repo.path, "staged.txt", None, FileGroupKind::Staged)
         .expect("Diff staged em repo unborn deve ter sucesso");
     assert!(staged_diff.patch.contains("+conteudo staged"));
 
-    // Diff untracked
     let untracked_diff = reader
         .diff(&repo.path, "untracked.txt", None, FileGroupKind::Untracked)
         .expect("Diff untracked deve ter sucesso");
@@ -220,11 +212,9 @@ fn test_same_file_staged_and_unstaged_groups() {
     repo.git(&["add", "file.txt"]);
     repo.git(&["commit", "-m", "initial"]);
 
-    // Stage a change
     repo.write_file("file.txt", b"linha 1\nlinha 2\n");
     repo.git(&["add", "file.txt"]);
 
-    // Make an unstaged change on the same file
     repo.write_file("file.txt", b"linha 1\nlinha 2\nlinha 3\n");
 
     let status = reader.status(&repo.path).expect("Status deve ter sucesso");
@@ -239,7 +229,6 @@ fn test_same_file_staged_and_unstaged_groups() {
     assert_eq!(status.unstaged[0].group, FileGroupKind::Unstaged);
     assert_eq!(status.unstaged[0].unstaged_status, Some('M'));
 
-    // Check that diffs differ between staged and unstaged
     let staged_diff = reader
         .diff(&repo.path, "file.txt", None, FileGroupKind::Staged)
         .unwrap();
@@ -276,7 +265,6 @@ fn test_paths_with_spaces_and_special_pathspecs() {
     assert!(untracked_paths.contains(&"arquivo:com:dois:pontos.txt"));
     assert!(untracked_paths.contains(&"arquivo_acentuado_café.txt"));
 
-    // Verify diff on literal pathspec containing brackets
     let bracket_diff = reader
         .diff(&repo.path, "[colchetes].txt", None, FileGroupKind::Staged)
         .expect("Diff no arquivo com colchetes deve tratar pathspec literalmente");
@@ -321,18 +309,15 @@ fn test_unmerged_conflicts() {
     repo.git(&["add", "conflict.txt"]);
     repo.git(&["commit", "-m", "base commit"]);
 
-    // Branch 1
     repo.git(&["checkout", "-b", "branch1"]);
     repo.write_file("conflict.txt", b"branch1 content\n");
     repo.git(&["commit", "-am", "branch1 commit"]);
 
-    // Branch 2
     repo.git(&["checkout", "main"]);
     repo.git(&["checkout", "-b", "branch2"]);
     repo.write_file("conflict.txt", b"branch2 content\n");
     repo.git(&["commit", "-am", "branch2 commit"]);
 
-    // Merge branch1 into branch2 -> produces conflict
     let _ = Command::new("git")
         .arg("-C")
         .arg(&repo.path)
@@ -351,7 +336,6 @@ fn test_external_filter_synthetic_blocking() {
     let reader = GitReader::new().unwrap();
     let repo = TestRepo::new("filter-block");
 
-    // Commit a file
     repo.write_file("documento.txt", b"texto original");
     repo.git(&["add", "documento.txt"]);
     repo.git(&["commit", "-m", "init"]);
@@ -359,11 +343,9 @@ fn test_external_filter_synthetic_blocking() {
     let marker_file = repo.path.join("filtro_executado_marcador.txt");
     assert!(!marker_file.exists());
 
-    // Configure synthetic clean filter that touches a marker file
     let clean_cmd = format!("touch \"{}\"", marker_file.to_string_lossy());
     repo.git(&["config", "filter.syntheticblock.clean", &clean_cmd]);
 
-    // Bind filter to *.txt
     repo.write_file(".gitattributes", b"*.txt filter=syntheticblock\n");
     repo.git(&["add", ".gitattributes"]);
     repo.git(&["commit", "-m", "add attributes"]);
@@ -376,10 +358,8 @@ fn test_external_filter_synthetic_blocking() {
         "Marcador não deve existir antes da execução do Git Notch"
     );
 
-    // Modify the tracked file so worktree status would normally invoke clean filter
     repo.write_file("documento.txt", b"texto alterado");
 
-    // Preflight must block!
     let filter_result = reader
         .check_filters(&repo.path)
         .expect("Preflight deve executar");
@@ -390,7 +370,6 @@ fn test_external_filter_synthetic_blocking() {
         FilterPreflightResult::Allowed => panic!("Deveria ter bloqueado o filtro externo"),
     }
 
-    // High level status call must return LimitedByExternalFilter
     let status_result = reader.status(&repo.path);
     match status_result {
         Err(GitError::LimitedByExternalFilter { filter_name, .. }) => {
@@ -399,7 +378,6 @@ fn test_external_filter_synthetic_blocking() {
         other => panic!("Esperado erro LimitedByExternalFilter, obtido: {:?}", other),
     }
 
-    // Verify marker file was NEVER created
     assert!(
         !marker_file.exists(),
         "O filtro externo sintético NUNCA deve ser executado pelo Git Notch!"
@@ -411,28 +389,22 @@ fn test_no_mutations_proof() {
     let reader = GitReader::new().unwrap();
     let repo = TestRepo::new("no-mutation");
 
-    // Setup diverse repo state
     repo.write_file("tracked.txt", b"versao original 1\n");
     repo.write_file("removido.txt", b"para remover\n");
     repo.git(&["add", "tracked.txt", "removido.txt"]);
     repo.git(&["commit", "-m", "commit inicial"]);
 
-    // Staged change
     repo.write_file("novo_staged.txt", b"conteudo novo staged\n");
     repo.git(&["add", "novo_staged.txt"]);
 
-    // Unstaged change
     repo.write_file("tracked.txt", b"versao modificada no worktree\n");
 
-    // Untracked file
     repo.write_file("untracked.txt", b"conteudo nao rastreado\n");
 
-    // Capture complete byte snapshot of git metadata and worktree
     let git_dir = repo.path.join(".git");
     let before_git = snapshot_directory_bytes(&git_dir);
     let before_worktree = snapshot_directory_bytes(&repo.path);
 
-    // Execute queries repeatedly
     for _ in 0..10 {
         let status = reader.status(&repo.path).expect("Status repetido");
         assert!(!status.staged.is_empty());
@@ -450,11 +422,9 @@ fn test_no_mutations_proof() {
             .unwrap();
     }
 
-    // Compare snapshots after repeated queries
     let after_git = snapshot_directory_bytes(&git_dir);
     let after_worktree = snapshot_directory_bytes(&repo.path);
 
-    // Filter out index lock files or temporary locks if any (there shouldn't be any)
     assert_eq!(
         before_git, after_git,
         "Metadados do Git (.git) não devem sofrer nenhuma mutação durante consultas de leitura!"

@@ -20,8 +20,6 @@ fn char_to_change_kind(c: char) -> ChangeKind {
     }
 }
 
-/// Splits a byte slice at space boundaries up to `max_splits` times.
-/// Returns (tokens_before_remainder, remainder).
 fn split_tokens(bytes: &[u8], count: usize) -> (Vec<&[u8]>, &[u8]) {
     let mut tokens = Vec::with_capacity(count);
     let mut current = bytes;
@@ -67,7 +65,6 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
             continue;
         }
 
-        // Branch headers: # branch.<key> <value>
         if chunk.starts_with(b"# ") {
             let line_str = String::from_utf8_lossy(&chunk[2..]);
             let mut parts = line_str.splitn(2, ' ');
@@ -95,7 +92,6 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
                     branch.upstream = Some(val.to_string());
                 }
                 "branch.ab" => {
-                    // Format: +<ahead> -<behind>
                     for token in val.split_whitespace() {
                         if let Some(ahead_str) = token.strip_prefix('+') {
                             branch.ahead = ahead_str.parse().ok();
@@ -109,9 +105,7 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
             continue;
         }
 
-        // Type 1: Ordinary changed entry: 1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>
         if chunk.starts_with(b"1 ") {
-            // Split first 8 spaces to isolate <path>
             let (tokens, path_bytes) = split_tokens(chunk, 8);
             if tokens.len() == 8 {
                 let xy_str = String::from_utf8_lossy(tokens[1]);
@@ -150,7 +144,6 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
             continue;
         }
 
-        // Type 2: Renamed or copied entry: 2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path>\0<origPath>
         if chunk.starts_with(b"2 ") {
             let (tokens, path_bytes) = split_tokens(chunk, 9);
             let orig_path = if i < chunks.len() {
@@ -206,7 +199,6 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
             continue;
         }
 
-        // Type u: Unmerged / conflicted entry: u <XY> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
         if chunk.starts_with(b"u ") {
             let (tokens, path_bytes) = split_tokens(chunk, 10);
             if tokens.len() == 10 {
@@ -232,7 +224,6 @@ pub fn parse_porcelain_v2_status(raw_bytes: &[u8]) -> Result<RepoStatusSnapshot,
             continue;
         }
 
-        // Type ?: Untracked entry: ? <path>
         if let Some(path_bytes) = chunk.strip_prefix(b"? ") {
             let path = String::from_utf8_lossy(path_bytes).to_string();
             untracked.push(FileChange {

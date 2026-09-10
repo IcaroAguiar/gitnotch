@@ -5,6 +5,8 @@ use std::time::Duration;
 use crate::git::command::run_git_command;
 use crate::git::models::{GitCapabilities, GitError};
 
+const MIN_SUPPORTED_GIT_VERSION: (u32, u32) = (2, 22);
+
 pub fn find_git_executable() -> Result<PathBuf, GitError> {
     let binary_name = if cfg!(windows) { "git.exe" } else { "git" };
 
@@ -12,7 +14,6 @@ pub fn find_git_executable() -> Result<PathBuf, GitError> {
         for dir in std::env::split_paths(&paths) {
             let candidate = dir.join(binary_name);
             if candidate.is_file() {
-                // Verify executable permissions on Unix
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
@@ -36,7 +37,6 @@ pub fn find_git_executable() -> Result<PathBuf, GitError> {
 }
 
 pub fn parse_git_version(version_str: &str) -> Option<(u32, u32, u32)> {
-    // Formats: "git version 2.47.3", "git version 2.39.5 (Apple Git-154)", etc.
     let marker = "git version ";
     let idx = version_str.find(marker)?;
     let rest = &version_str[idx + marker.len()..];
@@ -50,7 +50,6 @@ pub fn parse_git_version(version_str: &str) -> Option<(u32, u32, u32)> {
     let major = parts[0].parse::<u32>().ok()?;
     let minor = parts[1].parse::<u32>().ok()?;
     let patch = if parts.len() >= 3 {
-        // Strip trailing non-digits if any, e.g. "3windows.1"
         let patch_digits: String = parts[2]
             .chars()
             .take_while(|c| c.is_ascii_digit())
@@ -87,10 +86,10 @@ pub fn probe_git_capabilities(git_path: &Path) -> Result<GitCapabilities, GitErr
     })?;
 
     let (major, minor, _) = version_tuple;
-    // Require Git >= 2.22 for porcelain v2 with all necessary flags (--no-lazy-fetch, --no-optional-locks, etc.)
-    if major < 2 || (major == 2 && minor < 22) {
+    let (min_major, min_minor) = MIN_SUPPORTED_GIT_VERSION;
+    if major < min_major || (major == min_major && minor < min_minor) {
         return Err(GitError::VersionUnsupported(format!(
-            "Git versão {major}.{minor} é inferior ao requisito mínimo (2.22)"
+            "Git versão {major}.{minor} é inferior ao requisito mínimo ({min_major}.{min_minor})"
         )));
     }
 

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::git::models::GitError;
 
-pub const DEFAULT_MAX_OUTPUT_BYTES: usize = 20 * 1024 * 1024; // 20 MiB
+pub const DEFAULT_MAX_OUTPUT_BYTES: usize = 20 * 1024 * 1024;
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Clone)]
@@ -57,7 +57,6 @@ pub fn run_git_command(
 ) -> Result<CommandOutput, GitError> {
     let mut cmd = Command::new(git_path);
 
-    // Global security and read-only guards per section 9.1
     cmd.arg("--no-optional-locks");
     cmd.arg("--no-lazy-fetch");
     cmd.arg("--literal-pathspecs");
@@ -75,7 +74,6 @@ pub fn run_git_command(
         cmd.arg(arg);
     }
 
-    // Clean inherited Git environment variables per section 9.2
     for (key, _) in std::env::vars_os() {
         let key_str = key.to_string_lossy();
         if key_str.starts_with("GIT_") || key_str == "PAGER" {
@@ -83,7 +81,6 @@ pub fn run_git_command(
         }
     }
 
-    // Set mandatory non-interactive and read-only guards
     cmd.env("GIT_TERMINAL_PROMPT", "0");
     cmd.env("GIT_OPTIONAL_LOCKS", "0");
     cmd.env("GIT_NO_LAZY_FETCH", "1");

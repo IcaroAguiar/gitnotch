@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::git::command::{DEFAULT_MAX_OUTPUT_BYTES, DEFAULT_TIMEOUT, run_git_command_success};
 use crate::git::models::{DiffPatch, FileGroupKind, GitError};
 
-const MAX_UNTRACKED_FILE_SIZE: u64 = 2 * 1024 * 1024; // 2 MiB
+const MAX_UNTRACKED_FILE_SIZE: u64 = 2 * 1024 * 1024;
 
 fn is_buffer_binary(buf: &[u8]) -> bool {
     buf.contains(&0)
@@ -15,7 +15,6 @@ fn is_buffer_binary(buf: &[u8]) -> bool {
 fn build_untracked_diff(worktree: &Path, rel_path: &str) -> Result<DiffPatch, GitError> {
     let full_path = worktree.join(rel_path);
 
-    // Guard against directory traversal
     let canonical_worktree = worktree
         .canonicalize()
         .map_err(|e| GitError::Io(format!("Falha ao resolver diretório de trabalho: {e}")))?;

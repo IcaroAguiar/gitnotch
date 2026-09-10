@@ -67,8 +67,6 @@ impl GitReader {
         orig_path: Option<&str>,
         group: FileGroupKind,
     ) -> Result<DiffPatch, GitError> {
-        // If untracked, no git diff subprocess is run, so filters don't trigger.
-        // If staged or unstaged, check filters before invoking git diff.
         if group != FileGroupKind::Untracked {
             let filter_status = self.check_filters(worktree)?;
             if let FilterPreflightResult::LimitedByExternalFilter {
