@@ -42,3 +42,9 @@ A geometria fica em funções puras em `desktop.rs`. A aba encosta na borda dire
 O estado `closed` e `open` vive no Rust com geração monotônica. Perder foco recolhe a gaveta e um novo clique na aba em até 250 ms não a reabre, porque o mesmo gesto gera blur e clique. A máquina completa com `opening` e `closing` fica para GN-07.
 
 A CSP passou de `connect-src 'none'` para `connect-src 'self' ipc: http://ipc.localhost`, necessária para o transporte IPC do Tauri 2.11. A política continua restrita a recursos locais.
+
+A aba fica grudada na borda direita da tela, com cantos arredondados apenas no lado exposto e raio de 12; a gaveta usa raio de 20. Onde `corner-shape: superellipse()` existir, a curvatura vira squircle, mas o WKWebView atual ainda não suporta a propriedade e o build testado usa `border-radius` circular.
+
+O movimento leve de abrir e recolher foi antecipado de GN-07 a pedido do mantenedor e usa tokens no CSS: hover de 110 ms, abrir de 220 ms com `cubic-bezier(0.2, 0.8, 0.2, 1)`, recolher de 170 ms com `cubic-bezier(0.4, 0, 1, 1)` e fade de 80 ms sob movimento reduzido. A animação é de conteúdo dentro da janela, não de geometria nativa, conforme o limite da seção 6. O Rust emite `gitnotch://drawer-state` com estado e geração, espera 180 ms e só oculta a janela se a geração ainda for a mais recente; uma nova abertura cancela o fechamento pendente. A gaveta recebe uma capability que concede apenas `core:event:allow-listen` e `core:event:allow-unlisten`.
+
+Referências de movimento consultadas: HIG de Motion, WWDC18 803 (Designing Fluid Interfaces) e WWDC23 10158 (Animate with springs).
