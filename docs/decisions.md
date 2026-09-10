@@ -30,3 +30,19 @@ O ciclo de vida dos subprocessos protege contra esgotamento de recursos e deadlo
 Filtros externos (`clean` ou `process`) podem executar código arbitrário durante leituras do worktree. Conforme a seção 9.3 da especificação, implementou-se preflight que inspeciona a configuração efetiva (`filter.*.clean` e `filter.*.process`) e cruza com os atributos dos arquivos rastreados via `ls-files -z` e `check-attr -z filter --stdin`. Quando um filtro externo se aplica a arquivos rastreados, o repositório é classificado como `LimitedByExternalFilter`, recusando consultas de worktree que acionem o filtro e preservando o isolamento do produto.
 
 O parsing utiliza `status --porcelain=v2 --branch -z --no-ahead-behind --untracked-files=all --find-renames=50%`, tratando bytes e delimitadores NUL sem quebra por espaços ou tabs. Um mesmo arquivo com modificações staged e unstaged (`MM`) é categorizado em ambos os grupos. Repositórios `unborn` e `detached HEAD` são tratados explicitamente. Diffs de arquivos não rastreados são gerados por leitura direta delimitada, sem `git add` e sem criar arquivos temporários dentro do repositório.
+
+## Autorização de raízes e preferências (GN-03A)
+
+A seleção de pastas usa o diálogo nativo do `tauri-plugin-dialog` a partir do Rust, sem expor o comando de diálogo ao webview. O Rust canonicaliza a pasta escolhida, exige que seja um diretório e a registra com um identificador opaco `r{n}` persistido. O IPC não aceita caminhos absolutos: `get_repo_status` e `get_file_diff` recebem apenas `root_id` e recusam handles desconhecidos, removidos ou com época divergente. A guarda lexical de `rel_path` continua barrando `..` e caminhos absolutos antes de qualquer leitura.
+
+As preferências ficam em um JSON versionado (`schemaVersion: 1`) no diretório de configuração do aplicativo, com gravação atômica por arquivo temporário no mesmo diretório, `sync_all` e `rename`. Arquivo ausente vira padrão; JSON inválido é recuperado com aviso sem sobrescrita imediata; schema mais novo que o suportado bloqueia a escrita e reporta incompatibilidade; ids são validados e normalizados na carga.
+
+A época de autorização (`epoch`) vive apenas em memória, começa em 1 e incrementa ao autorizar (fora de deduplicação) ou remover. A remoção grava antes de alterar a memória, revoga o handle e invalida requisições pendentes: cada envelope de resposta carrega a época da resolução, e o frontend descarta respostas cuja época divergiu. Como os ids são monotônicos e persistidos, um handle removido nunca é reutilizado.
+
+A CSP passou a permitir `connect-src 'self' ipc: http://ipc.localhost` porque o transporte IPC do Tauri 2.11 usa fetch contra o canal local; nenhuma outra diretiva foi afrouxada e as capabilities continuam vazias.
+
+Referências consultadas:
+
+- [Plugin dialog](https://v2.tauri.app/plugin/dialog/).
+- [Chamar Rust do frontend](https://v2.tauri.app/develop/calling-rust/).
+- [Permissões Tauri](https://v2.tauri.app/security/permissions/).

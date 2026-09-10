@@ -41,6 +41,92 @@ footer {
   color: #a0a7aa;
   font-size: 12px;
 }
+.panel-actions {
+  margin: 28px 0 12px;
+  display: flex;
+  gap: 8px;
+}
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  color: #e8e8e6;
+  background: #2b2f31;
+  border: 1px solid #3c4245;
+  border-radius: 6px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: #33383b;
+}
+button:focus-visible {
+  outline: 2px solid #6aa9ff;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.root-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.root-item {
+  border: 1px solid #2f3437;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.root-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.root-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.root-path {
+  color: #a0a7aa;
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+.status {
+  color: #8fd1a7;
+  font-size: 12.5px;
+}
+.status-error {
+  color: #e8a1a1;
+}
+.warning,
+.error {
+  font-size: 13.5px;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+.warning {
+  color: #e6c98a;
+  background: #2e2a1f;
+  border: 1px solid #4a4128;
+}
+.error {
+  color: #e8a1a1;
+  background: #2e2020;
+  border: 1px solid #4a2a2a;
+}
+.empty {
+  margin-top: 20px;
+}
 @media (prefers-color-scheme: light) {
   :root {
     color: #202426;
@@ -52,5 +138,35 @@ footer {
   }
   footer {
     color: #626d72;
+  }
+  button {
+    color: #202426;
+    background: #eceae4;
+    border-color: #d4d1c8;
+  }
+  button:hover:not(:disabled) {
+    background: #e2dfd7;
+  }
+  .root-item {
+    border-color: #ddd9d0;
+  }
+  .root-path {
+    color: #626d72;
+  }
+  .status {
+    color: #2f6b45;
+  }
+  .status-error {
+    color: #a04444;
+  }
+  .warning {
+    color: #6b5416;
+    background: #f5eecf;
+    border-color: #e0d29a;
+  }
+  .error {
+    color: #8c3a3a;
+    background: #f7e3e3;
+    border-color: #e3b8b8;
   }
 }

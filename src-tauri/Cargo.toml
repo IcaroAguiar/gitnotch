@@ -13,3 +13,7 @@ tauri-build = { version = "=2.6.3", features = [] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151" }
 tauri = { version = "=2.11.5", features = [] }
+tauri-plugin-dialog = "=2.7.3"
+
+[dev-dependencies]
+tauri = { version = "=2.11.5", features = ["test"] }
