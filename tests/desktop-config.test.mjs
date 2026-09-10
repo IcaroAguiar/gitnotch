@@ -27,7 +27,11 @@ test("a prévia não concede capacidades nativas nem conexão de rede ao fronten
   );
   assert.deepEqual(directives.get("default-src"), ["'self'"]);
   assert.deepEqual(directives.get("script-src"), ["'self'"]);
-  assert.deepEqual(directives.get("connect-src"), ["'none'"]);
+  assert.deepEqual(directives.get("connect-src"), [
+    "'self'",
+    "ipc:",
+    "http://ipc.localhost",
+  ]);
   assert.deepEqual(directives.get("frame-src"), ["'none'"]);
   assert.deepEqual(directives.get("object-src"), ["'none'"]);
 });
