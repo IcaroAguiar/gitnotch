@@ -1,9 +1,10 @@
 # Dependências diretas
 
-As versões abaixo são as resolvidas para a aplicação mínima. Consulte os lockfiles para a árvore transitiva. Não há dependência de serviço remoto em runtime.
+As versões abaixo são as resolvidas para o aplicativo. Consulte os lockfiles para a árvore transitiva. Não há dependência de serviço remoto em runtime.
 
 | Dependência | Versão | Licença declarada | Uso |
 |---|---|---|---|
+| @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT | Comandos IPC e label da janela |
 | React e React DOM | 19.2.8 | MIT | Interface |
 | Tauri | 2.11.5 | MIT ou Apache-2.0 | Janela e runtime nativo |
 | tauri-build | 2.6.3 | MIT ou Apache-2.0 | Build Rust |

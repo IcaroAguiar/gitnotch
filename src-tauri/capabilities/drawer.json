@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "drawer-state-events",
+  "description": "Permite à gaveta escutar o canal de estado usado nas transições de abrir e recolher.",
+  "windows": ["drawer"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}
