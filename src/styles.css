@@ -6,10 +6,10 @@
   text-rendering: optimizeLegibility;
   --motion-dwell: 120ms;
   --motion-exit: 250ms;
-  --motion-open: 280ms;
-  --motion-close: 200ms;
-  --ease-open: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-close: cubic-bezier(0.4, 0, 1, 1);
+  --motion-open: 380ms;
+  --motion-close: 240ms;
+  --ease-open: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-close: cubic-bezier(0.32, 0.72, 0, 1);
   --ribbon-width: 28px;
   --ribbon-height: 112px;
   --ribbon-gutter: calc(var(--ribbon-width) + 20px);
@@ -19,6 +19,7 @@
   --surface-solid-hover: #292e31;
   --surface-glass: rgb(25 29 31 / 30%);
   --surface-glass-hover: rgb(45 52 55 / 44%);
+  --surface-glass-border: rgb(255 255 255 / 20%);
   --surface-border: rgb(255 255 255 / 12%);
   --surface-border-strong: rgb(255 255 255 / 25%);
   --text-muted: #aeb5b2;
@@ -89,6 +90,36 @@ html[data-material="glass"] .surface {
   background: var(--surface-glass);
 }
 
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .surface {
+  --accent: #355e88;
+  --accent-soft: rgb(53 94 136 / 12%);
+  --surface-glass: rgb(245 248 255 / 25%);
+  --surface-glass-border: rgb(255 255 255 / 55%);
+  --text-muted: #2c374a;
+  --text-subtle: #2c374a;
+  color: #202637;
+}
+
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .surface::before {
+  opacity: 0;
+}
+
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .surface::after {
+  border-color: var(--surface-glass-border);
+}
+
 html[data-intent="closed"] .surface:hover {
   background: var(--surface-solid-hover);
 }
@@ -104,6 +135,12 @@ html[data-intent="closed"][data-material="glass"] .surface:hover {
 html[data-intent="preview"] .surface,
 html[data-intent="pinned"] .surface {
   border-radius: var(--radius-open) 0 0 var(--radius-open);
+}
+
+html[data-phase="closing"] .surface {
+  transition:
+    background-color var(--motion-dwell) var(--ease-close),
+    border-radius var(--motion-close) var(--ease-close);
 }
 
 .ribbon {
@@ -144,6 +181,38 @@ html[data-intent="pinned"] .surface {
   color: var(--accent);
 }
 
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .ribbon {
+  background: rgb(27 32 40 / 90%);
+  color: #f5f7fa;
+}
+
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .ribbon:hover,
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .ribbon:focus-visible {
+  background: rgb(45 54 65 / 94%);
+  color: #ffffff;
+}
+
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .ribbon[aria-pressed="true"] {
+  background: rgb(27 32 40 / 90%);
+  color: #f5f7fa;
+}
+
 .ribbon-glyph {
   width: 15px;
   height: 15px;
@@ -182,8 +251,8 @@ html[data-intent="pinned"] .drawer-content {
   pointer-events: auto;
   transform: translateX(0);
   transition:
-    opacity 130ms var(--ease-open) 50ms,
-    transform 160ms var(--ease-open) 40ms;
+    opacity 180ms var(--ease-open) 120ms,
+    transform 180ms var(--ease-open) 120ms;
 }
 
 html[data-phase="closing"] .drawer-content {
@@ -200,7 +269,7 @@ html[data-phase="closing"] .drawer-content {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px 17px 28px;
+  padding: 16px 24px 15px 28px;
   border-bottom: 1px solid rgb(255 255 255 / 8%);
 }
 
@@ -229,10 +298,10 @@ html[data-phase="closing"] .drawer-content {
 
 .drawer-pin,
 .drawer-close {
-  padding: 5px 9px;
-  border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 3%);
+  padding: 5px 8px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 2%);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.2;
@@ -245,8 +314,8 @@ html[data-phase="closing"] .drawer-content {
 
 .drawer-pin:hover,
 .drawer-close:hover {
-  border-color: rgb(255 255 255 / 24%);
-  background: rgb(255 255 255 / 9%);
+  border-color: rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 7%);
   color: inherit;
 }
 
@@ -256,47 +325,74 @@ html[data-phase="closing"] .drawer-content {
   color: #d6ecfb;
 }
 
+:where(
+    html[data-material="glass"][data-intent="preview"],
+    html[data-material="glass"][data-intent="pinned"]
+  )
+  .drawer-pin[aria-pressed="true"] {
+  border-color: rgb(53 94 136 / 42%);
+  background: rgb(53 94 136 / 12%);
+  color: #234b73;
+}
+
 .drawer-empty {
   display: grid;
   min-height: 0;
   flex: 1;
   align-content: center;
-  justify-items: start;
-  padding: 56px clamp(36px, 9vw, 96px) 68px 48px;
+  justify-items: center;
+  padding: 32px 48px 36px;
+  text-align: center;
 }
 
-.empty-mark {
-  width: 28px;
-  height: 4px;
-  margin-bottom: 24px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), rgb(168 209 238 / 18%));
+.empty-copy {
+  display: grid;
+  max-width: 280px;
+  justify-items: center;
+  gap: 11px;
 }
 
-.empty-eyebrow {
-  margin: 0 0 8px;
+.empty-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 3px;
+  fill: none;
   color: var(--accent);
-  font-size: 11px;
-  font-weight: 680;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  opacity: 0.82;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+}
+
+.empty-icon circle {
+  fill: currentcolor;
+  stroke: none;
 }
 
 .drawer-empty h1 {
-  max-width: 18ch;
   margin: 0;
-  font-size: clamp(22px, 2.6vw, 29px);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  font-size: clamp(18px, 2.2vw, 20px);
+  font-weight: 630;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
-.drawer-empty > p:last-child {
-  max-width: 31ch;
-  margin: 14px 0 0;
+.drawer-empty p {
+  max-width: 28ch;
+  margin: 0;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.drawer-footer {
+  flex: 0 0 auto;
+  padding: 11px 24px 13px 28px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 @supports (corner-shape: squircle) {
@@ -308,24 +404,46 @@ html[data-phase="closing"] .drawer-content {
 @media (prefers-reduced-motion: reduce) {
   .surface,
   .surface::after,
+  html[data-phase="closing"] .surface,
   .drawer-content,
   html[data-intent="preview"] .drawer-content,
   html[data-intent="pinned"] .drawer-content,
   html[data-phase="closing"] .drawer-content,
   .drawer-pin,
-  .drawer-close {
+  .drawer-close,
+  .ribbon,
+  .drawer-footer {
     transition-duration: 1ms;
     transition-delay: 0ms;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  html[data-material="glass"] .surface {
+  html[data-material="glass"] .surface,
+  :where(
+      html[data-material="glass"][data-intent="preview"],
+      html[data-material="glass"][data-intent="pinned"]
+    )
+    .surface {
+    --surface-solid: #f4f6fa;
     background: var(--surface-solid);
   }
 
-  .surface::before {
+  .surface::before,
+  :where(
+      html[data-material="glass"][data-intent="preview"],
+      html[data-material="glass"][data-intent="pinned"]
+    )
+    .surface::before {
     opacity: 0.32;
+  }
+
+  :where(
+      html[data-material="glass"][data-intent="preview"],
+      html[data-material="glass"][data-intent="pinned"]
+    )
+    .surface::after {
+    border-color: var(--surface-border);
   }
 }
 
@@ -336,6 +454,7 @@ html[data-phase="closing"] .drawer-content {
     --surface-solid-hover: #eaede8;
     --surface-glass: rgb(246 247 244 / 36%);
     --surface-glass-hover: rgb(235 239 233 / 52%);
+    --surface-glass-border: rgb(255 255 255 / 44%);
     --surface-border: rgb(0 0 0 / 12%);
     --surface-border-strong: rgb(0 0 0 / 23%);
     --text-muted: #596260;
@@ -369,5 +488,9 @@ html[data-phase="closing"] .drawer-content {
   .drawer-pin[aria-pressed="true"] {
     border-color: rgb(40 114 165 / 44%);
     color: #1a5c87;
+  }
+
+  .drawer-footer {
+    border-top-color: rgb(0 0 0 / 8%);
   }
 }

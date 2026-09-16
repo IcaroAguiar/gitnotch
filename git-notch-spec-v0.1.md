@@ -183,7 +183,7 @@ No fallback sem material nativo, a versão inicial usa fundo sólido: não mostr
 
 ### 5.3 Integração nativa
 
-A implementação GN-01B usa `NSGlassEffectView` público de AppKit, no estilo `Regular`, pelo adaptador Rust com `objc2`. Uma raiz `NSView` do tamanho da janela recorta o vidro, que excede 20 pontos internamente à direita. O `contentView` documentado do vidro é um host de mesma largura que contém o conteúdo existente da janela na largura visível, com margem direita fixa de 20 pontos. O adaptador não adiciona uma subview arbitrária ao vidro nem mantém ponteiro Objective-C cru em estado global.
+A implementação GN-01B usa `NSGlassEffectView` público de AppKit, no estilo `Regular`, pelo adaptador Rust com `objc2`. Uma raiz `NSView` do tamanho da janela recorta o vidro, que excede 20 pontos internamente à direita. O `contentView` documentado do vidro é um host de mesma largura que contém o conteúdo existente da janela na largura visível, com margem direita fixa de 20 pontos. O adaptador não adiciona uma subview arbitrária ao vidro nem mantém ponteiro Objective-C cru em estado global. No candidato atual, `NSAppearanceNameAqua` fica restrito ao `NSGlassEffectView` enquanto a forma está aberta ou fechando; em `closed/resting`, `appearance = nil` restaura a herança do sistema. Essa sincronização não define aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua.
 
 O adaptador aplica o material uma vez, recupera o vidro pela hierarquia raiz de recorte → vidro e restaura o conteúdo original extraído do host quando o efeito não estiver disponível ou quando `accessibilityDisplayShouldReduceTransparency` estiver ativo. O modo efetivo (`glass` ou `solid`) volta ao frontend. Mudanças em `prefers-reduced-transparency`, `prefers-reduced-motion` e esquema de cor pedem nova leitura do modo efetivo; o material e a redução de transparência ainda exigem validação nativa em execução.
 
@@ -203,19 +203,19 @@ Materiais Apple adaptam-se a configurações de acessibilidade; nossas camadas C
 
 ## 6. Movimento e transições
 
-Valores implementados, ainda sujeitos ao aceite nativo:
+Valores do candidato atual, ainda sujeitos ao aceite nativo:
 
 | Transição | Duração / comportamento |
 |---|---|
 | Hover na fita | abertura após 120 ms de permanência |
 | Saída da prévia | tolerância de 250 ms; nova entrada cancela |
-| Abrir | 280 ms em `NSAnimationContext`, curva `cubic-bezier(.2,.8,.2,1)` |
-| Recolher | 200 ms em `NSAnimationContext`, curva `cubic-bezier(.4,0,1,1)` |
-| Movimento reduzido | duração nativa zero; CSS sem atraso perceptível |
+| Abrir | 380 ms em `NSAnimationContext`, curva `cubic-bezier(.16,1,.3,1)` |
+| Recolher | 240 ms em `NSAnimationContext`, curva `cubic-bezier(.32,.72,0,1)` |
+| Movimento reduzido | duração nativa zero; CSS em 1 ms, sem atraso perceptível |
 
 A transição nativa altera frame e raio da mesma forma. Cada intenção recebe geração e fase (`opening`, `closing` ou `resting`). A confirmação vem do callback de conclusão de `NSAnimationContext`, não de uma espera fixa; callbacks de geração anterior são descartados. O efeito é iniciado no main thread depois de checar a geração atual, para impedir que uma ação atrasada redimensione ou foque a forma depois de uma intenção nova.
 
-O conteúdo usa apenas opacidade e deslocamento curto, atrasado na abertura e removido cedo no fechamento, para não apresentar texto comprimido durante a mudança de tamanho. Não emitir `set_size`/`set_position` por frame, nem animar blur, tint ou refração no JavaScript.
+O conteúdo usa apenas opacidade e deslocamento curto, com atraso de 120 ms e duração de 180 ms na abertura; no fechamento, sai antes do estreitamento. Não emitir `set_size`/`set_position` por frame, nem animar blur, tint ou refração no JavaScript. Os valores 280/200 ms e suas curvas anteriores permanecem somente nos registros históricos de GN-01B.
 
 Estado da gaveta: as intenções são `closed`, `preview` e `pinned`; a fase visual é separada para permitir reversão. Seleção de texto e captura real de ponteiro suspendem o recolhimento automático da prévia. Menus, diálogos, busca e persistência de posição continuam fora da superfície vazia desta entrega. Durante o morph de raio, o hit-testing usa o maior raio como guarda conservadora somente nos cantos esquerdos; a equivalência com a camada apresentada pelo AppKit ainda precisa de prova nativa. O Boring Notch fornece referência de cancelamento e diferenciação entre abrir e fechar; não reutilizar seu código GPL por padrão. [R9]
 

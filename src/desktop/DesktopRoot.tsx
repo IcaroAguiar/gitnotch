@@ -283,11 +283,24 @@ export function DesktopRoot() {
           </div>
         </header>
         <main className="drawer-empty">
-          <div className="empty-mark" aria-hidden="true" />
-          <p className="empty-eyebrow">Git Notch</p>
-          <h1>Nada para revisar</h1>
-          <p>Os repositórios observados aparecerão aqui.</p>
+          <div className="empty-copy">
+            <svg
+              className="empty-icon"
+              viewBox="0 0 32 32"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M5.5 8.5h8l2.25 3H26.5v12H5.5z" />
+              <path d="M10 15v5m0-2.5h7m0 0V15" />
+              <circle cx="10" cy="15" r="1.35" />
+              <circle cx="10" cy="20" r="1.35" />
+              <circle cx="17" cy="15" r="1.35" />
+            </svg>
+            <h1>Nada para revisar</h1>
+            <p>Os repositórios observados aparecerão aqui.</p>
+          </div>
         </main>
+        <footer className="drawer-footer">Somente leitura</footer>
       </section>
     </div>
   );

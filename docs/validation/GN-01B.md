@@ -1,8 +1,8 @@
 # Validação da aba e da gaveta nativas (GN-01B)
 
-**Estado:** o refinamento de encaixe de 16/09/2026 tem verificações automatizadas, bundle e QA nativa limitada concluídos. Hover, foco externo, acessibilidade, monitores mistos, hit-testing exato e viewport medido diretamente permanecem pendentes. As evidências nativas abaixo do refinamento registram candidatos anteriores e não validam a forma atual.
+**Estado:** o refinamento atual de líquido/material de 16/09/2026 tem verificações automatizadas, bundle e QA nativa limitada concluídos. Hover, foco externo, acessibilidade, monitores mistos, hit-testing exato e viewport medido diretamente permanecem pendentes. As evidências históricas abaixo do refinamento registram candidatos anteriores; não há aceite visual do usuário para o candidato atual.
 
-Revisão histórica de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O refinamento atual partiu de `137de88d0d42fff635ed79f6f60692e06eff19eb`. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
+Revisão histórica de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O refinamento de encaixe partiu de `137de88d0d42fff635ed79f6f60692e06eff19eb`; o refinamento atual de material partiu de `7de574964ada6509221e88e1805484ed329448a6`. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
 
 ## Verificações automatizadas
 
@@ -24,6 +24,16 @@ A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linu
 - A checagem da geração e o início de foco/evento/frame ocorrem no main thread. O callback agenda a conclusão após liberar o mutex, evitando reentrância de duração zero.
 - Material usa `NSGlassEffectView` `Regular` dentro de uma raiz de recorte do tamanho da janela. O vidro e seu host excedem 20 pontos somente à direita, enquanto o conteúdo original preserva a largura visível da janela. O fallback sólido restaura esse conteúdo sem reter ponteiro Objective-C cru.
 - O frontend sincroniza preferências de movimento/transparência/esquema de cor, descarta snapshots atrasados e mantém a prévia aberta durante seleção ou captura real de ponteiro.
+
+## Candidato atual: refinamento líquido/material em 16/09/2026
+
+- A abertura usa 380 ms com `cubic-bezier(.16,1,.3,1)`; o fechamento usa 240 ms com `cubic-bezier(.32,.72,0,1)`. O conteúdo abre após 120 ms e anima opacidade/deslocamento por 180 ms; movimento reduzido usa duração nativa zero e CSS de 1 ms.
+- `NSGlassEffectView` continua no estilo `Regular`. `NSAppearanceNameAqua` é aplicado somente ao vidro durante a forma aberta ou fechando; a conclusão lê o estado atual e restaura `appearance = nil` em `closed/resting`. Não há definição de aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua.
+- `pnpm check` passou (Biome, TypeScript e 7 testes Node); `pnpm rust:check` passou (rustfmt, Clippy com `-D warnings` e 29 testes Rust); o bundle `--bundles app -- --locked` passou. Logs: `artifacts/liquid-open/logs/pnpm-check.log`, `artifacts/liquid-open/logs/pnpm-rust-check.log` e `artifacts/liquid-open/logs/tauri-build-app.log`.
+- O executável do bundle final em `src-tauri/target/release/bundle/macos/Git Notch.app` tem SHA-256 `3f6f6f30f7c67a7d14742a34d2ecaf015c75809de46093f2950c7b8c3cb4cecb`.
+- `artifacts/liquid-open/final-light.png` e `final-dark.png` foram inspecionadas no harness sintético: a superfície perolada transmite cores/formas desfocadas e os textos permaneceram legíveis nos dois fundos. `artifacts/liquid-open/final-cycle.mov` (e a conversão sem retiming em `final-cycle.mp4`) registra 20 s compostos do app; clique na fita abriu, `Esc` fechou, a gaveta reabriu e Recolher fechou.
+- `artifacts/liquid-open/final-geometry.jsonl` contém 810 amostras em 20 s para a janela `1764`: uma única janela, borda direita em 2.560, repouso em 28 × 112 e aberto em 960 × 600, centro 691 (691,5 nos arredondamentos intermediários).
+- Permanecem pendentes hover físico, foco externo, acessibilidade, monitores mistos/desconexão, `innerWidth` direto e hit-testing/click-through exato nos cantos esquerdos. A QA descrita acima não equivale a aceite visual do usuário.
 
 ## Evidência nativa do segundo candidato
 

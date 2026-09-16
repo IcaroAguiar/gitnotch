@@ -9,8 +9,9 @@ use objc2::MainThreadMarker;
 use objc2::rc::Retained;
 use objc2::runtime::AnyClass;
 use objc2_app_kit::{
-    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions,
-    NSGlassEffectView, NSGlassEffectViewStyle, NSView, NSWindow, NSWorkspace,
+    NSAnimatablePropertyContainer, NSAnimationContext, NSAppearance, NSAppearanceCustomization,
+    NSAppearanceNameAqua, NSAutoresizingMaskOptions, NSGlassEffectView, NSGlassEffectViewStyle,
+    NSView, NSWindow, NSWorkspace,
 };
 use objc2_foundation::{NSPoint, NSRect, NSSize};
 use objc2_quartz_core::CAMediaTimingFunction;
@@ -57,8 +58,8 @@ pub fn refresh_material(app: &AppHandle) -> Result<&'static str, String> {
         let state = state
             .lock()
             .map_err(|error| format!("Falha de sincronização interna: {error}"))?;
-        let radius = material_radius(state.view());
-        let result = install_material(&ns, mtm, radius);
+        let view = state.view();
+        let result = install_material(&ns, mtm, view);
         drop(state);
         result?;
         Ok("glass")
@@ -70,8 +71,9 @@ pub fn refresh_material(app: &AppHandle) -> Result<&'static str, String> {
     Ok(kind)
 }
 
-fn install_material(ns: &NSWindow, mtm: MainThreadMarker, radius: f64) -> Result<(), String> {
-    if glass_view(ns).is_some() {
+fn install_material(ns: &NSWindow, mtm: MainThreadMarker, view: DesktopView) -> Result<(), String> {
+    if let Some(glass) = glass_view(ns) {
+        set_material_appearance(&glass, view)?;
         return Ok(());
     }
 
@@ -87,6 +89,7 @@ fn install_material(ns: &NSWindow, mtm: MainThreadMarker, radius: f64) -> Result
 
     let glass = NSGlassEffectView::new(mtm);
     glass.setStyle(NSGlassEffectViewStyle::Regular);
+    set_material_appearance(&glass, view)?;
     glass.setFrame(NSRect::new(
         visible_bounds.origin,
         NSSize::new(
@@ -94,7 +97,7 @@ fn install_material(ns: &NSWindow, mtm: MainThreadMarker, radius: f64) -> Result
             visible_bounds.size.height,
         ),
     ));
-    glass.setCornerRadius(radius);
+    glass.setCornerRadius(material_radius(view));
     glass.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
@@ -149,10 +152,38 @@ fn glass_view(window: &NSWindow) -> Option<Retained<NSGlassEffectView>> {
 }
 
 fn material_radius(view: DesktopView) -> f64 {
-    match (view.intent, view.phase) {
-        (DrawerIntent::Closed, DrawerPhase::Resting) => super::RIBBON_RADIUS,
-        _ => super::DRAWER_RADIUS,
+    match material_form(view) {
+        FormState::Closed => super::RIBBON_RADIUS,
+        FormState::Open => super::DRAWER_RADIUS,
     }
+}
+
+fn material_form(view: DesktopView) -> FormState {
+    match (view.intent, view.phase) {
+        (DrawerIntent::Closed, DrawerPhase::Resting) => FormState::Closed,
+        _ => FormState::Open,
+    }
+}
+
+fn set_material_appearance(glass: &NSGlassEffectView, view: DesktopView) -> Result<(), String> {
+    let current = glass.appearance();
+    match material_form(view) {
+        FormState::Closed => {
+            if current.is_some() {
+                glass.setAppearance(None);
+            }
+        }
+        FormState::Open => {
+            let aqua = NSAppearance::appearanceNamed(unsafe { NSAppearanceNameAqua })
+                .ok_or_else(|| "aparência Aqua indisponível".to_string())?;
+            let aqua_name = aqua.name().to_string();
+            let current_name = current.map(|appearance| appearance.name().to_string());
+            if current_name.as_deref() != Some(aqua_name.as_str()) {
+                glass.setAppearance(Some(&aqua));
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn apply_state(
@@ -166,12 +197,17 @@ pub fn apply_state(
     let window = window.clone();
 
     run_on_main(&app, move || {
+        let ns = ns_window(&window)?;
         let state = main_app.state::<Mutex<super::DesktopState>>();
         let state = state
             .lock()
             .map_err(|error| format!("Falha de sincronização interna: {error}"))?;
         if state.view().generation != view.generation {
             return Ok(());
+        }
+
+        if let Some(glass) = glass_view(&ns) {
+            set_material_appearance(&glass, view)?;
         }
 
         if focus {
@@ -218,18 +254,21 @@ pub fn animate_form(
             FormState::Closed => super::RIBBON_RADIUS,
         };
         let timing = match form {
-            FormState::Open => CAMediaTimingFunction::functionWithControlPoints(0.2, 0.8, 0.2, 1.0),
+            FormState::Open => {
+                CAMediaTimingFunction::functionWithControlPoints(0.16, 1.0, 0.3, 1.0)
+            }
             FormState::Closed => {
-                CAMediaTimingFunction::functionWithControlPoints(0.4, 0.0, 1.0, 1.0)
+                CAMediaTimingFunction::functionWithControlPoints(0.32, 0.72, 0.0, 1.0)
             }
         };
+        let animation_ns = ns.clone();
         let changes = RcBlock::new(move |context: NonNull<NSAnimationContext>| {
             // AppKit fornece este contexto apenas durante o grupo de animação.
             let context = unsafe { context.as_ref() };
             context.setDuration(actual_duration.as_secs_f64());
             context.setTimingFunction(Some(&timing));
-            ns.animator().setFrame_display(frame, true);
-            if let Some(glass) = glass_view(&ns) {
+            animation_ns.animator().setFrame_display(frame, true);
+            if let Some(glass) = glass_view(&animation_ns) {
                 glass.animator().setCornerRadius(radius);
             }
         });
@@ -237,6 +276,7 @@ pub fn animate_form(
             let app = completion_app.clone();
             let _ = completion_app.run_on_main_thread(move || {
                 super::finish_transition(&app, view.generation);
+                let _ = refresh_material(&app);
             });
         });
 
@@ -247,6 +287,11 @@ pub fn animate_form(
         if state.view().generation != view.generation {
             return Ok(());
         }
+
+        if let Some(glass) = glass_view(&ns) {
+            set_material_appearance(&glass, view)?;
+        }
+
         if focus {
             window.set_focus().map_err(|error| error.to_string())?;
         }
