@@ -148,6 +148,24 @@ fn next_root_id_is_raised_above_existing_ids() {
 }
 
 #[test]
+fn maximum_root_id_preserves_the_file_and_marks_future_authorization_as_exhausted() {
+    let dir = TempDir::new("maximum-id");
+    let store = SettingsStore::new(dir.path().to_path_buf());
+    fs::write(
+        store.file_path(),
+        "{\"schemaVersion\":1,\"nextRootId\":1,\"roots\":[{\"id\":\"r18446744073709551615\",\"path\":\"/a\"}]}",
+    )
+    .unwrap();
+
+    let (file, health) = store.load();
+
+    assert_eq!(health, LoadHealth::Ok);
+    assert_eq!(file.roots.len(), 1);
+    assert_eq!(file.roots[0].id, "r18446744073709551615");
+    assert_eq!(file.next_root_id, u64::MAX);
+}
+
+#[test]
 fn atomic_write_replaces_content_without_leaving_temp_file() {
     let dir = TempDir::new("atomic");
     let store = SettingsStore::new(dir.path().to_path_buf());

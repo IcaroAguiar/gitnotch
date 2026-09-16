@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::*;
+use crate::settings::SETTINGS_SCHEMA_VERSION;
 
 static FIXTURE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -91,6 +92,24 @@ fn authorize_is_idempotent_for_the_same_canonical_path() {
 }
 
 #[test]
+#[cfg(unix)]
+fn non_utf8_root_path_is_rejected_before_it_can_be_persisted() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let dir = TempDir::new("non-utf8");
+    let root = dir
+        .path()
+        .join(std::ffi::OsString::from_vec(b"checkout-\xff".to_vec()));
+
+    let error = persisted_path(&root).expect_err("um caminho não UTF-8 não pode ser salvo em JSON");
+
+    assert!(
+        error.to_string().contains("UTF-8"),
+        "erro inesperado: {error}"
+    );
+}
+
+#[test]
 #[cfg(target_os = "macos")]
 fn canonicalizes_tmp_to_private_tmp_on_macos() {
     let dir = TempDir::new("macos-tmp");
@@ -122,6 +141,100 @@ fn remove_root_revokes_handle_and_never_revives_it() {
     assert_eq!(reauthorized.epoch, after_remove.epoch + 1);
     assert_eq!(reauthorized.roots[0].id, "r2");
     assert_ne!(reauthorized.roots[0].id, removed_id);
+}
+
+#[test]
+fn exhausted_root_ids_preserve_existing_roots_without_reuse() {
+    let dir = TempDir::new("root-id-exhaustion");
+    let existing = dir.child("existing");
+    let selected = dir.child("selected");
+    let config = dir.path().join("config");
+    let store = SettingsStore::new(config.clone());
+    let persisted_path = fs::canonicalize(&existing)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    store
+        .save(&SettingsFile {
+            schema_version: SETTINGS_SCHEMA_VERSION,
+            next_root_id: u64::MAX,
+            roots: vec![PersistedRoot {
+                id: "r1".to_string(),
+                path: persisted_path,
+            }],
+        })
+        .unwrap();
+    let before = fs::read(store.file_path()).unwrap();
+    let mut workspace = Workspace::load(config);
+
+    let error = workspace
+        .authorize_root(&selected)
+        .expect_err("não pode reutilizar nem avançar um identificador exaurido");
+
+    assert!(
+        error
+            .to_string()
+            .contains("identificadores de raiz foram esgotados"),
+        "erro inesperado: {error}"
+    );
+    let view = workspace.view();
+    assert_eq!(view.epoch, 1);
+    assert_eq!(view.roots.len(), 1);
+    assert_eq!(view.roots[0].id, "r1");
+    assert_eq!(fs::read(store.file_path()).unwrap(), before);
+}
+
+#[test]
+fn exhausted_epoch_rejects_authorization_without_persisting_or_reusing_state() {
+    let dir = TempDir::new("authorize-epoch-exhaustion");
+    let root = dir.child("checkout");
+    let config = dir.path().join("config");
+    let mut workspace = Workspace::load(config.clone());
+    workspace.epoch = u64::MAX;
+
+    let error = workspace
+        .authorize_root(&root)
+        .expect_err("uma época exaurida não pode voltar a zero");
+
+    assert!(
+        error
+            .to_string()
+            .contains("época de autorização foi esgotada"),
+        "erro inesperado: {error}"
+    );
+    assert_eq!(workspace.epoch(), u64::MAX);
+    assert!(workspace.view().roots.is_empty());
+    assert!(
+        !config.join("settings.json").exists(),
+        "a falha não pode gravar uma raiz que não ficou autorizada"
+    );
+}
+
+#[test]
+fn exhausted_epoch_rejects_removal_without_revoking_the_handle() {
+    let dir = TempDir::new("remove-epoch-exhaustion");
+    let root = dir.child("checkout");
+    let config = dir.path().join("config");
+    let mut workspace = Workspace::load(config.clone());
+    let authorized = workspace.authorize_root(&root).unwrap();
+    let root_id = authorized.roots[0].id.clone();
+    let before = fs::read(config.join("settings.json")).unwrap();
+    workspace.epoch = u64::MAX;
+
+    let error = workspace
+        .remove_root(&root_id)
+        .expect_err("uma época exaurida não pode revogar e voltar a zero");
+
+    assert!(
+        error
+            .to_string()
+            .contains("época de autorização foi esgotada"),
+        "erro inesperado: {error}"
+    );
+    assert_eq!(workspace.epoch(), u64::MAX);
+    assert_eq!(workspace.view().roots[0].id, root_id);
+    assert_eq!(fs::read(config.join("settings.json")).unwrap(), before);
 }
 
 #[test]

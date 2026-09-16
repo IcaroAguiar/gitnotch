@@ -6,9 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::ipc::{CallbackFn, InvokeBody};
-use tauri::test::{
-    INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_context, noop_assets,
-};
+use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::InvokeRequest;
 use tauri::{Manager, WebviewWindow, WebviewWindowBuilder};
 
@@ -139,6 +137,8 @@ impl TestApp {
         init_repo(&repo);
 
         let workspace = Workspace::load(dir.path().join("config"));
+        let mut context = crate::application_context();
+        context.config_mut().app.windows.clear();
         let app = mock_builder()
             .invoke_handler(tauri::generate_handler![
                 get_workspace_view,
@@ -148,7 +148,7 @@ impl TestApp {
                 get_file_diff,
                 get_git_capabilities
             ])
-            .build(mock_context(noop_assets()))
+            .build(context)
             .expect("app de teste");
         app.manage(AppState::new(workspace));
         let webview = WebviewWindowBuilder::new(&app, "main", Default::default())
@@ -171,6 +171,37 @@ impl TestApp {
             .expect("autorização da fixture");
         (view.roots[0].id.clone(), view.epoch)
     }
+}
+
+#[test]
+fn custom_commands_are_limited_to_the_main_webview_and_declared_allowlist() {
+    let test = TestApp::new();
+
+    invoke(&test.webview, "get_workspace_view", serde_json::json!({}))
+        .expect("o webview main deve receber o comando declarado");
+
+    let other_webview = WebviewWindowBuilder::new(&test.app, "untrusted", Default::default())
+        .build()
+        .expect("webview de teste sem capability");
+    let wrong_window = invoke(&other_webview, "get_workspace_view", serde_json::json!({}))
+        .expect_err("um webview fora da capability não pode invocar comandos do aplicativo");
+    assert!(
+        wrong_window
+            .as_str()
+            .unwrap_or_default()
+            .contains("not allowed on window"),
+        "erro inesperado: {wrong_window}"
+    );
+
+    let undeclared = invoke(&test.webview, "undeclared_command", serde_json::json!({}))
+        .expect_err("um comando fora da allowlist deve ser recusado antes do handler");
+    assert!(
+        undeclared
+            .as_str()
+            .unwrap_or_default()
+            .contains("not allowed"),
+        "erro inesperado: {undeclared}"
+    );
 }
 
 #[test]

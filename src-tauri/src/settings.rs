@@ -191,7 +191,8 @@ fn normalize(mut file: SettingsFile) -> Result<SettingsFile, String> {
         }
     }
 
-    file.next_root_id = file.next_root_id.max(max_id + 1).max(1);
+    let minimum_next_root_id = max_id.saturating_add(1);
+    file.next_root_id = file.next_root_id.max(minimum_next_root_id).max(1);
     Ok(file)
 }
 

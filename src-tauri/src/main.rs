@@ -9,6 +9,10 @@ use tauri::Manager;
 
 use crate::app_state::{AppState, Workspace};
 
+fn application_context<R: tauri::Runtime>() -> tauri::Context<R> {
+    tauri::generate_context!()
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -29,6 +33,6 @@ fn main() {
             commands::get_file_diff,
             commands::get_git_capabilities
         ])
-        .run(tauri::generate_context!())
+        .run(application_context())
         .expect("Não foi possível iniciar o Git Notch");
 }

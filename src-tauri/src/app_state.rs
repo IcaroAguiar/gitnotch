@@ -36,6 +36,8 @@ struct RootRecord {
 pub enum WorkspaceError {
     UnknownRoot(String),
     RequestStale { expected: u64, current: u64 },
+    RootIdExhausted,
+    EpochExhausted,
     RootUnavailable(String),
     RootChanged(String),
     InvalidSelection(String),
@@ -50,6 +52,12 @@ impl std::fmt::Display for WorkspaceError {
             Self::RequestStale { expected, current } => write!(
                 f,
                 "Requisição obsoleta: época esperada {expected}, época atual {current}"
+            ),
+            Self::RootIdExhausted => {
+                f.write_str("Os identificadores de raiz foram esgotados; não é possível autorizar outra pasta")
+            }
+            Self::EpochExhausted => f.write_str(
+                "A época de autorização foi esgotada; reinicie o aplicativo antes de alterar as raízes",
             ),
             Self::RootUnavailable(path) => write!(f, "Raiz indisponível: '{path}'"),
             Self::RootChanged(path) => write!(
@@ -169,16 +177,27 @@ impl Workspace {
             )));
         }
 
+        let persisted_path = persisted_path(&canonical)?;
+
         if self.roots.values().any(|r| r.canonical_path == canonical) {
             return Ok(self.view());
         }
 
+        let next_root_id = self
+            .file
+            .next_root_id
+            .checked_add(1)
+            .ok_or(WorkspaceError::RootIdExhausted)?;
+        let next_epoch = self
+            .epoch
+            .checked_add(1)
+            .ok_or(WorkspaceError::EpochExhausted)?;
         let id = format!("r{}", self.file.next_root_id);
         let mut candidate = self.file.clone();
-        candidate.next_root_id += 1;
+        candidate.next_root_id = next_root_id;
         candidate.roots.push(PersistedRoot {
             id: id.clone(),
-            path: canonical.to_string_lossy().into_owned(),
+            path: persisted_path,
         });
 
         self.store.save(&candidate)?;
@@ -192,7 +211,7 @@ impl Workspace {
                 available: true,
             },
         );
-        self.epoch += 1;
+        self.epoch = next_epoch;
 
         Ok(self.view())
     }
@@ -204,13 +223,18 @@ impl Workspace {
             return Err(WorkspaceError::UnknownRoot(root_id.to_string()));
         }
 
+        let next_epoch = self
+            .epoch
+            .checked_add(1)
+            .ok_or(WorkspaceError::EpochExhausted)?;
+
         let mut candidate = self.file.clone();
         candidate.roots.retain(|r| r.id != root_id);
 
         self.store.save(&candidate)?;
         self.file = candidate;
         self.roots.remove(root_id);
-        self.epoch += 1;
+        self.epoch = next_epoch;
 
         Ok(self.view())
     }
@@ -259,6 +283,15 @@ fn root_available(path: &Path) -> bool {
     std::fs::canonicalize(path)
         .map(|canonical| canonical == path && canonical.is_dir())
         .unwrap_or(false)
+}
+
+fn persisted_path(path: &Path) -> Result<String, WorkspaceError> {
+    path.to_str().map(str::to_owned).ok_or_else(|| {
+        WorkspaceError::InvalidSelection(
+            "o caminho da pasta contém bytes que não são UTF-8 e não pode ser salvo nas preferências"
+                .to_string(),
+        )
+    })
 }
 
 fn display_name(path: &Path) -> String {

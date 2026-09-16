@@ -1,12 +1,34 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { transformWithOxc } from "vite";
 
 const config = JSON.parse(
   await readFile(
     new URL("../src-tauri/tauri.conf.json", import.meta.url),
     "utf8",
   ),
+);
+const mainCapability = JSON.parse(
+  await readFile(
+    new URL("../src-tauri/capabilities/main.json", import.meta.url),
+    "utf8",
+  ),
+);
+const workspaceEpochSource = await readFile(
+  new URL("../src/settings/workspaceEpoch.ts", import.meta.url),
+  "utf8",
+);
+const workspaceEpochModule = await import(
+  `data:text/javascript;base64,${Buffer.from(
+    (
+      await transformWithOxc(workspaceEpochSource, "workspaceEpoch.ts", {
+        lang: "ts",
+        module: "esnext",
+        target: "es2022",
+      })
+    ).code,
+  ).toString("base64")}`
 );
 
 test("a janela inicial carrega somente o frontend empacotado", () => {
@@ -17,8 +39,20 @@ test("a janela inicial carrega somente o frontend empacotado", () => {
   assert.notEqual(config.app.withGlobalTauri, true);
 });
 
-test("a prévia não concede capacidades nativas nem conexão de rede ao frontend", () => {
-  assert.deepEqual(config.app.security.capabilities, []);
+test("o webview principal recebe somente os comandos locais declarados", () => {
+  assert.deepEqual(config.app.security.capabilities, ["main"]);
+  assert.deepEqual(mainCapability.windows, ["main"]);
+  assert.deepEqual(mainCapability.permissions, [
+    "allow-get-workspace-view",
+    "allow-select-root",
+    "allow-remove-root",
+    "allow-get-repo-status",
+    "allow-get-file-diff",
+    "allow-get-git-capabilities",
+  ]);
+});
+
+test("a CSP permite somente o transporte IPC local necessário", () => {
   const directives = new Map(
     config.app.security.csp.split(";").map((directive) => {
       const [name, ...sources] = directive.trim().split(/\s+/);
@@ -34,4 +68,16 @@ test("a prévia não concede capacidades nativas nem conexão de rede ao fronten
   ]);
   assert.deepEqual(directives.get("frame-src"), ["'none'"]);
   assert.deepEqual(directives.get("object-src"), ["'none'"]);
+});
+
+test("a aceitação de WorkspaceView não deixa resposta de época antiga substituir a nova", () => {
+  const acceptor = new workspaceEpochModule.WorkspaceEpochAcceptor();
+
+  assert.equal(acceptor.accept(4), true);
+  assert.equal(acceptor.accept(6), true);
+  assert.equal(acceptor.accept(5), false);
+  assert.equal(acceptor.current(), 6);
+  assert.equal(acceptor.accept(6), true);
+  assert.equal(acceptor.accept(7), true);
+  assert.equal(acceptor.current(), 7);
 });

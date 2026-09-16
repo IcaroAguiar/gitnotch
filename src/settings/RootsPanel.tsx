@@ -7,6 +7,7 @@ import {
   selectRoot,
   type WorkspaceView,
 } from "./workspaceBridge";
+import { WorkspaceEpochAcceptor } from "./workspaceEpoch";
 
 type StatusState =
   | { kind: "loading" }
@@ -62,18 +63,33 @@ export function RootsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, StatusState>>({});
-  const epochRef = useRef<number | null>(null);
+  const epochAcceptor = useRef(new WorkspaceEpochAcceptor());
+
+  const acceptEpoch = useCallback(
+    (nextEpoch: number) => epochAcceptor.current.accept(nextEpoch),
+    [],
+  );
+
+  const acceptView = useCallback(
+    (next: WorkspaceView) => {
+      if (!acceptEpoch(next.epoch)) return false;
+      setView(next);
+      return true;
+    },
+    [acceptEpoch],
+  );
 
   const loadView = useCallback(async () => {
+    const requestedEpoch = epochAcceptor.current.current();
     try {
       const next = await getWorkspaceView();
-      epochRef.current = next.epoch;
-      setView(next);
-      setError(null);
+      if (acceptView(next)) setError(null);
     } catch (cause) {
-      setError(String(cause));
+      if (epochAcceptor.current.current() === requestedEpoch) {
+        setError(String(cause));
+      }
     }
-  }, []);
+  }, [acceptView]);
 
   useEffect(() => {
     void loadView();
@@ -82,7 +98,7 @@ export function RootsPanel() {
   useEffect(() => {
     if (!view) return;
     const current = view;
-    epochRef.current = current.epoch;
+    if (!acceptEpoch(current.epoch)) return;
     let active = true;
 
     setStatuses(
@@ -120,40 +136,44 @@ export function RootsPanel() {
           }
         }),
       );
-      if (!active || epochRef.current !== current.epoch) return;
+      if (!active || !acceptEpoch(current.epoch)) return;
       setStatuses(Object.fromEntries(entries));
     })();
 
     return () => {
       active = false;
     };
-  }, [view]);
+  }, [acceptEpoch, view]);
 
   const handleAdd = async () => {
+    const requestedEpoch = epochAcceptor.current.current();
     setBusy(true);
     try {
       const next = await selectRoot();
-      if (next) {
-        epochRef.current = next.epoch;
-        setView(next);
+      if (next && acceptView(next)) {
+        setError(null);
+      } else if (!next && epochAcceptor.current.current() === requestedEpoch) {
+        setError(null);
       }
-      setError(null);
     } catch (cause) {
-      setError(String(cause));
+      if (epochAcceptor.current.current() === requestedEpoch) {
+        setError(String(cause));
+      }
     } finally {
       setBusy(false);
     }
   };
 
   const handleRemove = async (rootId: string) => {
+    const requestedEpoch = epochAcceptor.current.current();
     setBusy(true);
     try {
       const next = await removeRoot(rootId);
-      epochRef.current = next.epoch;
-      setView(next);
-      setError(null);
+      if (acceptView(next)) setError(null);
     } catch (cause) {
-      setError(String(cause));
+      if (epochAcceptor.current.current() === requestedEpoch) {
+        setError(String(cause));
+      }
     } finally {
       setBusy(false);
     }
