@@ -9,12 +9,12 @@ const config = JSON.parse(
   ),
 );
 
-test("as duas janelas carregam somente o frontend empacotado", () => {
+test("a janela única carrega somente o frontend empacotado", () => {
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.deepEqual(
     config.app.windows.map((window) => window.label),
-    ["notch", "drawer"],
+    ["notch"],
   );
 
   for (const window of config.app.windows) {
@@ -24,31 +24,30 @@ test("as duas janelas carregam somente o frontend empacotado", () => {
   assert.notEqual(config.app.withGlobalTauri, true);
 });
 
-test("a aba não rouba foco e a gaveta começa recolhida", () => {
-  const [notch, drawer] = config.app.windows;
+test("a fita nasce recolhida e não recebe foco ao aparecer", () => {
+  const [notch] = config.app.windows;
 
+  assert.equal(notch.width, 16);
+  assert.equal(notch.height, 96);
   assert.equal(notch.focus, false);
-  assert.equal(notch.focusable, false);
+  assert.equal(notch.focusable, true);
   assert.equal(notch.acceptFirstMouse, true);
   assert.equal(notch.transparent, true);
   assert.equal(notch.alwaysOnTop, true);
   assert.equal(notch.skipTaskbar, true);
-
-  assert.equal(drawer.visible, false);
-  assert.equal(drawer.transparent, true);
-  assert.equal(drawer.alwaysOnTop, true);
-  assert.equal(drawer.decorations, false);
+  assert.equal(notch.decorations, false);
+  assert.equal(notch.shadow, false);
 });
 
-test("a gaveta recebe apenas o canal de eventos do estado", async () => {
+test("a janela recebe apenas o canal de eventos do estado", async () => {
   const capability = JSON.parse(
     await readFile(
-      new URL("../src-tauri/capabilities/drawer.json", import.meta.url),
+      new URL("../src-tauri/capabilities/notch.json", import.meta.url),
       "utf8",
     ),
   );
 
-  assert.deepEqual(capability.windows, ["drawer"]);
+  assert.deepEqual(capability.windows, ["notch"]);
   assert.deepEqual(capability.permissions, [
     "core:event:allow-listen",
     "core:event:allow-unlisten",

@@ -13,8 +13,8 @@
       {
         "label": "notch",
         "title": "Git Notch",
-        "width": 28,
-        "height": 64,
+        "width": 16,
+        "height": 96,
         "resizable": false,
         "maximizable": false,
         "minimizable": false,
@@ -25,25 +25,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focus": false,
-        "focusable": false,
+        "focusable": true,
         "acceptFirstMouse": true,
-        "visibleOnAllWorkspaces": true
-      },
-      {
-        "label": "drawer",
-        "title": "Git Notch",
-        "width": 600,
-        "height": 800,
-        "visible": false,
-        "resizable": false,
-        "maximizable": false,
-        "minimizable": false,
-        "closable": false,
-        "decorations": false,
-        "transparent": true,
-        "shadow": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
         "visibleOnAllWorkspaces": true
       }
     ],

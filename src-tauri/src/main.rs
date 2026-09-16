@@ -82,13 +82,17 @@ fn main() {
         .manage(Mutex::new(DesktopState::new()))
         .setup(|app| {
             desktop::place_notch(app.handle())?;
+            if let Err(error) = desktop::install_material(app.handle()) {
+                eprintln!("material nativo indisponível: {error}");
+            }
+            desktop::spawn_hover_watcher(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == desktop::DRAWER_LABEL
+            if window.label() == desktop::NOTCH_LABEL
                 && matches!(event, tauri::WindowEvent::Focused(false))
             {
-                desktop::collapse_drawer(window.app_handle());
+                desktop::blur_drawer(window.app_handle());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -96,7 +100,10 @@ fn main() {
             get_repo_status,
             get_file_diff,
             desktop::toggle_drawer,
-            desktop::get_desktop_capabilities
+            desktop::collapse_drawer,
+            desktop::get_desktop_capabilities,
+            desktop::set_drawer_interaction,
+            desktop::refresh_desktop_appearance
         ])
         .run(tauri::generate_context!())
         .expect("Não foi possível iniciar o Git Notch");

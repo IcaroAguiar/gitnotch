@@ -18,5 +18,10 @@ As versões abaixo são as resolvidas para o aplicativo. Consulte os lockfiles p
 | Tipos React DOM | 19.2.5 | MIT | Desenvolvimento |
 | serde | 1.0.229 | MIT ou Apache-2.0 | Serialização de tipos e modelos de domínio |
 | serde_json | 1.0.151 | MIT ou Apache-2.0 | Serialização de dados para IPC |
+| objc2 | 0.6.4 | MIT | Ponte Rust para objetos Objective-C no adaptador macOS |
+| objc2-app-kit | 0.3.2 | Zlib ou Apache-2.0 ou MIT | Janela, animação e `NSGlassEffectView` no macOS |
+| objc2-foundation | 0.3.2 | MIT | Tipos geométricos usados pelo adaptador macOS |
+| objc2-quartz-core | 0.3.2 | Zlib ou Apache-2.0 ou MIT | Curvas de tempo da animação AppKit |
+| block2 | 0.6.2 | MIT | Callback de conclusão de `NSAnimationContext` |
 
 As licenças foram consultadas nos metadados npm e nos manifests dos crates baixados. A lista não substitui os textos de licença nem a revisão transitiva necessária para uma release distribuída. `pnpm licenses list` permite inspecionar a árvore JavaScript instalada.

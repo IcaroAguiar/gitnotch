@@ -85,42 +85,45 @@ Preferências em arquivo JSON versionado no diretório de configuração do apli
 
 ## 4. Janela e comportamento de desktop
 
-### 4.1 Estratégia inicial: duas janelas pequenas
+### 4.1 Forma nativa única
 
-- `notch`: janela mínima, sem decorações, com bundle de interface pequeno.
-- `drawer`: criada sob demanda e reaproveitada enquanto o aplicativo estiver aberto; fica oculta quando recolhida.
-- Ambas compartilham o mesmo núcleo Rust. Não abrir um backend por janela.
-- O custo adicional do segundo WebView entra no orçamento de memória. Não afirmar que “Tauri usa um só processo”: os processos auxiliares do renderizador também contam.
+A implementação inicial aprovada usa uma única forma Tauri com o label `notch`.
 
-Essa proposta evita uma janela transparente do tamanho do monitor que capture cliques sobre a IDE. O teste inicial decide se o custo é aceitável. Se não for, a alternativa é uma única janela redimensionável, atrás do mesmo `DesktopAdapter`; não mudar o restante da arquitetura.
+- Ela inicia compacta como fita e a mesma WebView cresce para o painel lateral.
+- O núcleo Rust, o bundle e o estado são únicos; não há segunda janela nem segundo WebContent para sincronizar.
+- A forma nunca ocupa a tela inteira somente para observar ponteiro. A região fora de sua moldura continua pertencendo ao aplicativo atrás, sujeita à validação nativa de hit-testing.
+- A forma escolhida evita a troca de foco e o custo de um segundo WebView. Não se conclui por isso que todos os casos de foco/hit-testing já foram aceitos.
 
 ### 4.2 Geometria inicial, em unidades lógicas
 
-| Elemento | Proposta inicial |
+| Elemento | Implementação GN-01B |
 |---|---|
-| Aba visível | 22 × 56; alvo de interação até 28 × 64, limitado à própria aba |
-| Borda | Direita por padrão; esquerda configurável |
-| Posição vertical | Centro por padrão; posição persistida e ajustada à área útil |
-| Gaveta | 600 de largura inicial; intervalo 440–900, limitado ao monitor |
-| Altura | Até 800, sempre limitada à área útil com margens de 12 |
-| Raio | Aba 10–14; gaveta 20–24, a confirmar no protótipo |
+| Fita visível | 16 × 96, encostada na borda direita e centralizada na área útil |
+| Gaveta | até 960 × 600; a largura e altura são limitadas pela área útil, preservando 24 px de margem quando possível |
+| Borda | direita nesta entrega |
+| Posição vertical | centro da fita, limitado à área útil |
+| Raio | fita 8 no lado exposto; painel 20 |
 
-Não usar coordenadas físicas como se fossem CSS pixels. Persistir monitor, lado e posição proporcional; recalcular com escala/DPI e área útil atuais. Ao desconectar monitor, mover para área visível do monitor disponível. Não cobrir barra de menu, Dock ou taskbar por acidente.
+Os tamanhos de design são convertidos pelo `scale_factor` para os pixels físicos da API Tauri. A área útil vem do monitor atual da forma, com fallback ao primário se ela ainda não estiver associada a um monitor. No AppKit, o frame final é calculado a partir do frame corrente de `NSWindow` e da posição física corrente da própria forma; não depende da altura do monitor principal. Isso evita assumir uma origem global positiva ou escala única. Desconexão e monitores mistos ainda requerem teste nativo.
 
 O notch é na **borda da tela**, não o recorte físico de câmera do Mac. Não acompanhar a janela da ADE.
 
 ### 4.3 Interação
 
-- Clique ou atalho abre; hover só realça e apresenta tooltip, sem abrir automaticamente na v0.1.
+Revisão de interação de 10/09/2026: a prévia por hover e a fixação por clique substituem a regra anterior de hover apenas decorativo. A fita recolhida continua sem roubar foco.
+
+- O hover na fita abre uma prévia temporária após 120 ms de permanência. Clicar na fita fixa a gaveta; com a fita recolhida, o clique abre já fixado.
+- A prévia não rouba foco. A gaveta fixada ignora a perda de foco e a saída do ponteiro.
+- A prévia recolhe após tolerância de saída de 250 ms da região da fita e da gaveta; nova entrada cancela o fechamento. Seleção de texto e captura real de ponteiro suspendem o fechamento temporário. Menus e diálogos entram na mesma guarda quando existirem.
+- Com a gaveta fixada, apenas um comando explícito recolhe: a própria fita, um controle de fixação, o botão Recolher ou `Esc`.
 - O indicador fechado representa **repos com novidades observadas ainda não visualizadas**; tooltip explicita a unidade. Zero novidades não é um erro.
 - Preferir ponto discreto a um badge vermelho permanente. Conflitos podem usar indicador distinto, acompanhado de texto ao abrir.
 - Mudanças externas não abrem a gaveta nem roubam foco.
-- Ao abrir deliberadamente, a gaveta pode receber foco para navegação e seleção de texto. A aba recolhida não deve interromper digitação na IDE.
-- `Esc` fecha primeiro busca/menu/diálogo ativo; depois recolhe a gaveta.
-- Clicar fora recolhe quando não houver seleção de texto, diálogo, menu ou operação de arraste em andamento. Opção “Manter aberta” impede esse fechamento.
-- Não esconder automaticamente apenas porque o ponteiro saiu da janela.
-- Reabrir restaura seleção, expansões e âncora de leitura antes de receber novos dados.
-- Atalho global configurável. Falha/conflito de registro é informada; acesso pelo aplicativo continua disponível. Tray/menu bar é auxílio, não o único acesso.
+- Na prévia, clicar no conteúdo pode conceder foco à gaveta para interação; a fixação continua sendo uma intenção explícita. A fita recolhida não interrompe a digitação em outro aplicativo.
+- `Esc` recolhe a gaveta fixada quando a página não o marcou como tratado; busca/menu/diálogo futuro deve tratá-lo antes. A prévia não captura o `Esc` digitado no aplicativo anterior.
+- Clicar fora recolhe a prévia quando não houver seleção de texto, diálogo, menu ou operação de arraste em andamento. A gaveta fixada permanece até um comando explícito.
+- Reabrir deve restaurar seleção, expansões e âncora de leitura antes de receber novos dados quando esses conteúdos forem implementados.
+- Atalho global configurável, tray/menu bar e persistência de posição permanecem fora desta entrega.
 
 A transparência visual não determina hit-testing. Validar cliques fora das janelas e nas bordas arredondadas em cada plataforma; `pointer-events:none` em HTML não equivale a passar o clique a outro aplicativo.
 
@@ -179,13 +182,11 @@ No fallback sem material nativo, a versão inicial usa fundo sólido: não mostr
 
 ### 5.3 Integração nativa
 
-`window-vibrancy` 0.8.0 fornece `LiquidGlassOptions`, `tint_color`, `radius`, `opaque` e `content_view`. O código consultado cria uma camada sólida de fundo quando `opaque(true)` é usado; esse parâmetro é booleano, **não um slider de opacidade**. Para transparência do desktop, experimentar `opaque(false)`, com WKWebView e HTML transparentes. Operações AppKit na main thread. [R2–R3]
+A implementação GN-01B usa `NSGlassEffectView` público de AppKit, no estilo `Regular`, pelo adaptador Rust com `objc2`. A view de conteúdo existente da janela é colocada em `NSGlassEffectView.contentView`, que é a relação de subview documentada para o efeito; o adaptador não adiciona uma subview arbitrária nem mantém ponteiro Objective-C cru em estado global.
 
-O adaptador deve possuir e controlar o ciclo de vida do efeito: aplicar uma vez por configuração nativa; limpar o efeito anterior antes de substituí-lo. Não criar outra `NSGlassEffectView` para cada evento de input do slider. Durante o arraste, atualizar só as variáveis CSS de preenchimento; persistir com debounce e uma gravação final.
+O adaptador aplica o material uma vez, recupera a view pela hierarquia da própria janela e restaura o content view original quando o efeito não estiver disponível ou quando `accessibilityDisplayShouldReduceTransparency` estiver ativo. O modo efetivo (`glass` ou `solid`) volta ao frontend. Mudanças em `prefers-reduced-transparency`, `prefers-reduced-motion` e esquema de cor pedem nova leitura do modo efetivo; o material e a redução de transparência ainda exigem validação nativa em execução.
 
-Usar somente variantes públicas documentadas. O fato de um enum de biblioteca expor valores adicionais não os transforma em APIs suportadas da Apple. `NSGlassEffectView` é documentado no AppKit; independentemente disso, a configuração de transparência do WebView no Tauri pode exigir `macOSPrivateApi`. Registrar essa distinção e testar o pacote assinado; distribuição em App Store está fora do escopo. [R14–R15]
-
-Não implementar blur do desktop com `backdrop-filter` no HTML nem capturas periódicas da tela. O material deve vir do adaptador nativo. Não animar blur, tint, sombras ou refração continuamente no JavaScript.
+Não há slider de transparência, persistência de aparência nem uso de `window-vibrancy` nesta entrega. O preenchimento CSS completa o material sem reduzir a opacidade permanente de texto. Não implementar blur do desktop com `backdrop-filter` no HTML nem capturas periódicas da tela. Operações AppKit ocorrem na main thread.
 
 ### 5.4 Acessibilidade e aceite visual
 
@@ -201,24 +202,21 @@ Materiais Apple adaptam-se a configurações de acessibilidade; nossas camadas C
 
 ## 6. Movimento e transições
 
-Valores iniciais de design, a validar em execução nativa:
+Valores implementados, ainda sujeitos ao aceite nativo:
 
 | Transição | Duração / comportamento |
 |---|---|
-| Hover na aba | 100–120 ms; realce mínimo, sem pulsação contínua |
-| Abrir | 220 ms; aceleração inicial e desaceleração suave, sem quique |
-| Recolher | 160–180 ms; reversível se houver novo clique |
-| Expandir grupo/arquivo | 140–160 ms; evitar animar altura de milhares de linhas |
-| Chegada de atualização | Indicador discreto; nenhum salto de posição |
-| Movimento reduzido | Instantâneo ou fade até 80 ms |
+| Hover na fita | abertura após 120 ms de permanência |
+| Saída da prévia | tolerância de 250 ms; nova entrada cancela |
+| Abrir | 280 ms em `NSAnimationContext`, curva `cubic-bezier(.2,.8,.2,1)` |
+| Recolher | 200 ms em `NSAnimationContext`, curva `cubic-bezier(.4,0,1,1)` |
+| Movimento reduzido | duração nativa zero; CSS sem atraso perceptível |
 
-Curva inicial para conteúdo: `cubic-bezier(.2,.8,.2,1)`. Preferir CSS/Web Animations API a uma biblioteca de animação grande para poucas transições.
+A transição nativa altera frame e raio da mesma forma. Cada intenção recebe geração e fase (`opening`, `closing` ou `resting`). A confirmação vem do callback de conclusão de `NSAnimationContext`, não de uma espera fixa; callbacks de geração anterior são descartados. O efeito é iniciado no main thread depois de checar a geração atual, para impedir que uma ação atrasada redimensione ou foque a forma depois de uma intenção nova.
 
-**Limite técnico importante:** um `transform` CSS não anima a geometria do vidro nativo atrás do WebView. A primeira versão deve entregar reveal curto e estável, não prometer morph líquido contínuo entre duas janelas. Se necessário, o adaptador macOS faz a transição nativa; nos outros ambientes usa-se uma transição mais simples. O spike deve verificar que o vidro não aparece como um retângulo abrupto antes do conteúdo.
+O conteúdo usa apenas opacidade e deslocamento curto, atrasado na abertura e removido cedo no fechamento, para não apresentar texto comprimido durante a mudança de tamanho. Não emitir `set_size`/`set_position` por frame, nem animar blur, tint ou refração no JavaScript.
 
-Não emitir `set_size`/`set_position` por IPC em cada frame. Reposicionar/redimensionar apenas nos limites da transição e durante arraste limitado; interpolação visual pertence ao frontend ou à API de animação nativa, não ao loop do backend.
-
-Estado da gaveta: `closed → opening → open → closing`. Cada operação tem um token; nova intenção cancela ou reverte a anterior. Checagens de fechamento devem considerar menus, seleção e foco atuais. O Boring Notch fornece referência de cancelamento e diferenciação entre abrir e fechar; não reutilizar seu código GPL por padrão. [R9]
+Estado da gaveta: as intenções são `closed`, `preview` e `pinned`; a fase visual é separada para permitir reversão. Seleção de texto e captura real de ponteiro suspendem o recolhimento automático da prévia. Menus, diálogos, busca e persistência de posição continuam fora da superfície vazia desta entrega. Durante o morph de raio, o hit-testing usa o maior raio como guarda conservadora; a equivalência com a camada apresentada pelo AppKit ainda precisa de prova nativa. O Boring Notch fornece referência de cancelamento e diferenciação entre abrir e fechar; não reutilizar seu código GPL por padrão. [R9]
 
 ## 7. Organização da gaveta
 
