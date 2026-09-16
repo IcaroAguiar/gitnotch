@@ -16,7 +16,9 @@ const DRAWER_WIDTH: u32 = 960;
 const DRAWER_MAX_HEIGHT: u32 = 600;
 const DRAWER_HORIZONTAL_MARGIN: u32 = 24;
 const DRAWER_HEIGHT_MARGIN: u32 = 24;
+#[cfg(target_os = "macos")]
 const OPEN_MS: u64 = 280;
+#[cfg(target_os = "macos")]
 const CLOSE_MS: u64 = 200;
 const HOVER_DWELL: Duration = Duration::from_millis(120);
 const HOVER_EXIT_TOLERANCE: Duration = Duration::from_millis(250);
@@ -332,9 +334,9 @@ pub fn get_desktop_capabilities(
 }
 
 #[tauri::command]
-pub fn refresh_desktop_appearance(app: AppHandle) -> Result<DesktopAppearance, String> {
+pub fn refresh_desktop_appearance(_app: AppHandle) -> Result<DesktopAppearance, String> {
     #[cfg(target_os = "macos")]
-    let material = native::refresh_material(&app)?;
+    let material = native::refresh_material(&_app)?;
 
     #[cfg(not(target_os = "macos"))]
     let material = material_kind();
@@ -572,6 +574,7 @@ fn move_form(
     }
 }
 
+#[cfg(target_os = "macos")]
 fn transition_duration(form: FormState) -> Duration {
     match form {
         FormState::Open => Duration::from_millis(OPEN_MS),

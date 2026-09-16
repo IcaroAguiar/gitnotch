@@ -12,6 +12,10 @@ Revisão de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O bu
 - `pnpm exec tauri build --bundles app -- --locked` passou e produziu o aplicativo em `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável do bundle final tem SHA-256 `0cd439586e673de45fcf02f5039ad9b5dea305ca8e041f5b7ffd81e5ae495f84`. Log: `artifacts/premium-lateral/desktop-bundle-app-final.log`.
 - A tentativa de bundle padrão também produziu o executável e `.app`, mas falhou ao criar o DMG em `bundle_dmg.sh`. O DMG não foi recuperado nesta entrega; log: `artifacts/premium-lateral/desktop-bundle.log`.
 
+## CI multiplataforma
+
+A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linux: duas constantes e uma função de animação exclusivas do macOS, além do handle sem uso no fallback. A correção posterior limita os símbolos de animação ao macOS e identifica o parâmetro opcional por plataforma. Ela não altera o comportamento macOS capturado acima. Os checks remotos dessa correção devem ser consultados na PR; não equivalem a aceite visual em Linux ou Windows.
+
 ## Contrato implementado
 
 - Uma única forma nativa `notch` nasce em 16 × 96 e expande para até 960 × 600 lógicos, limitada pela área útil do monitor atual.
