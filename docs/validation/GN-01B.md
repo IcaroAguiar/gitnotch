@@ -6,6 +6,8 @@ Base do candidato atual: `f321d35976d432f2fc7408004d658d60fb4668ee`. Revisão hi
 
 ## Candidato de QA: drawer flutuante em 16/09/2026
 
+Código do bundle verificado: `944ffb957f9a88988395f6d9b4050a4edfcc3898`. O commit seguinte apenas identifica este SHA na documentação.
+
 - A única `NSWindow` mantém a fita fechada de 28 × 112 encostada à direita e abre a mesma janela em 960 × 600, com quatro cantos de 20 px e lacuna de 24 px lógicos até a borda direita. A alça aberta é translúcida, mede 36 × 68 e reúne cabo grafite e chevron; o estado vazio continua sem dados Git artificiais.
 - `pnpm check` passou com Biome, TypeScript e 7 testes Node. `pnpm rust:check` passou com rustfmt, Clippy em `-D warnings` e 35 testes Rust, inclusive margem em escala 2, área útil pequena/origem negativa, cantos abertos e corredor de hover. Logs: `artifacts/floating-drawer/logs/pnpm-check-candidate2-no-shadow.log` e `artifacts/floating-drawer/logs/rust-check-candidate2-no-shadow.log`.
 - `pnpm exec tauri build --bundles app -- --locked` passou e produziu `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável `Contents/MacOS/gitnotch` tem SHA-256 `b2b7a26469060b9a5f94fda8ac15f990fefc5b43f87d8837e6f5c3759670b630`. Log: `artifacts/floating-drawer/logs/tauri-bundle-app-candidate2-no-shadow.log`. `git diff --check` também passou.
