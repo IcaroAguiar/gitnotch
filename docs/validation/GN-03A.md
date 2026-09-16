@@ -2,7 +2,7 @@
 
 Ambiente das verificações automatizadas atuais: macOS 27.0 (26A428), Apple Silicon (arm64), Node 22.23.2, pnpm 10.32.1, Rust 1.98.1 e Git 2.54.0 (Apple Git-157).
 
-As verificações automatizadas desta integração referem-se a `0f2f99dd0979adaf585099e3a165024942a2fa9c`. O roteiro nativo histórico partiu de `c7d9894` em macOS 26.6.2; a QA de painel e gaveta da combinação atual permanece pendente.
+As verificações automatizadas desta integração referem-se a `0f2f99dd0979adaf585099e3a165024942a2fa9c`. O roteiro nativo histórico partiu de `c7d9894` em macOS 26.6.2; a QA atual de autorização, restauração e remoção está registrada abaixo, com a leitura Git nativa bloqueada pela licença local do Xcode.
 
 ## Verificações locais
 
@@ -25,7 +25,7 @@ O teste de diretório real com bytes não UTF-8 fica sob `cfg(target_os = "linux
 4. **Prova de não mutação:** o teste `read_commands_do_not_mutate_the_repository` compara byte a byte `.git` e o worktree antes e depois de 5 ciclos de status e diff via IPC; os mapas são idênticos.
 5. **Frontend:** o aceitador monotônico de `WorkspaceView` conserva a época mais recente entre carregamento, autorização, remoção e término de status.
 
-## Roteiro nativo do painel integrado no macOS
+## Roteiro nativo histórico e roteiro de reprodução
 
 Fixture temporária `/tmp/gitnotch-gn03a-fix/repo` (repositório Git com 1 arquivo modificado e 1 novo) e `/tmp/gitnotch-gn03a-fix/nao-repo` (pasta comum). Capturas locais em `artifacts/` (não versionadas).
 
@@ -38,6 +38,18 @@ Fixture temporária `/tmp/gitnotch-gn03a-fix/repo` (repositório Git com 1 arqui
 7. Remover a segunda raiz deixa `roots: []` e mantém `nextRootId: 3`, comprovando ids monotônicos.
 
 As preferências ficam em `~/Library/Application Support/io.github.icaroaguiar.gitnotch/settings.json`; nenhuma escrita ocorreu dentro das raízes.
+
+## QA nativa da integração em 16/09/2026
+
+Executado diretamente no `.app` acima, com o mesmo SHA de código `0f2f99dd0979adaf585099e3a165024942a2fa9c` e SHA-256 do executável registrado. Sem backdrop. Capturas locais em `artifacts/merge-pr4/native-added.jpeg`, `native-restored.jpeg` e `native-removed.jpeg` no checkout principal.
+
+- A fita abriu por clique, mostrando o painel de pastas dentro da gaveta, com alça, controles e rodapé preservados.
+- Partindo de `roots: []`, o seletor nativo autorizou uma fixture Git temporária (`gitnotch-merge-review-*`). A pasta apareceu na interface e nas preferências.
+- Encerrar e reabrir o mesmo `.app` restaurou a raiz autorizada.
+- Remover a autorização pela interface retornou ao estado vazio. As preferências terminaram com `roots: []` e `nextRootId: 4`, sem referência à fixture e sem reutilizar seu identificador.
+- O manifesto SHA-256 de todos os 28 arquivos da fixture, incluindo `.git`, permaneceu idêntico após o fluxo. Essa prova cobre as operações executadas; não implica leitura Git bem-sucedida neste lançamento.
+- A consulta de status na interface retornou código 69 porque o Git do Xcode exige aceitar a licença nesta máquina. Nenhuma licença ou configuração global foi alterada. Os testes automatizados usaram o ambiente de Command Line Tools; a leitura Git pelo `.app` continua pendente neste host.
+- A abertura por hover e a passagem de prévia para fixada antes do seletor não foram exercitadas fisicamente neste roteiro; foram revisadas no código. O seletor foi aberto com a gaveta já fixada por clique.
 
 ## Reproduzir
 
@@ -56,7 +68,7 @@ Para o roteiro nativo, crie uma fixture Git descartável, execute o binário ger
 ## Limites da evidência
 
 - Windows e Linux não foram validados nativamente.
-- O roteiro nativo acima precisa ser repetido para a combinação atual de painel e gaveta; checks, build e bundle não substituem essa QA.
+- A QA atual cobre autorização, restauração e remoção; status Git bem-sucedido na interface, hover físico, foco entre aplicativos, múltiplos monitores e acessibilidade completa permanecem sem validação neste roteiro.
 - O erro de acesso após remoção não aparece como mensagem na interface: a linha deixa de existir. A rejeição de handle removido e de requisição com época antiga está comprovada pelos testes IPC.
 - O aceitador monotônico de respostas no frontend tem teste de contrato; a sequência assíncrona completa da interface ainda depende do roteiro nativo.
 - Bloqueio de schema futuro e recuperação de arquivo inválido foram verificados por testes unitários, não manualmente na interface.
