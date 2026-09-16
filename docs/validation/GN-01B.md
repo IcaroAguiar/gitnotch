@@ -122,3 +122,5 @@ Essa evidência confirma a silhueta, o encaixe à direita e as transições medi
 ## Preparação para merge em 16/09/2026
 
 A CI Windows falhava ao criar a fixture `arquivo:com:dois:pontos.txt` (`InvalidFilename`, código123). A criação e a asserção desse nome ficam restritas a plataformas que aceitam dois-pontos; espaços, colchetes, Unicode e diff literal continuam testados no Windows. O teste `git::tests::test_paths_with_spaces_and_special_pathspecs` passou localmente no macOS com `cargo test --manifest-path src-tauri/Cargo.toml git::tests::test_paths_with_spaces_and_special_pathspecs -- --exact`. O primeiro comando sem o módulo selecionou zero testes e não foi considerado validação. O comportamento do produto não mudou; o resultado Windows depende da nova CI.
+
+A revisão independente encontrou que o fallback Windows/Linux aplicava tamanho e posição antes de validar a geração. Agora o mesmo guard cobre geração, geometria, foco e evento; uma transição obsoleta retorna antes de qualquer efeito. O caminho AppKit não mudou. Compilação e execução do fallback dependem da CI dessas plataformas.

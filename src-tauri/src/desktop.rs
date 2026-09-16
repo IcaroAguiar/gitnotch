@@ -577,13 +577,24 @@ fn move_form(
 
     #[cfg(not(target_os = "macos"))]
     {
+        let state = app.state::<Mutex<DesktopState>>();
+        let state = state
+            .lock()
+            .map_err(|error| format!("Falha de sincronização interna: {error}"))?;
+        if state.view().generation != view.generation {
+            return Ok(Some(Duration::ZERO));
+        }
+
         window
             .set_size(PhysicalSize::new(target.width, target.height))
             .map_err(|error| error.to_string())?;
         window
             .set_position(PhysicalPosition::new(target.x, target.y))
             .map_err(|error| error.to_string())?;
-        apply_fallback_state(app, window, view, focus)?;
+        if focus {
+            window.set_focus().map_err(|error| error.to_string())?;
+        }
+        emit_view(window, view)?;
         Ok(Some(Duration::ZERO))
     }
 }
