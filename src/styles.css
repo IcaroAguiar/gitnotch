@@ -79,7 +79,7 @@ button {
   z-index: 3;
   inset: 0;
   border: 1px solid var(--surface-border);
-  border-right: 0;
+  border-right-color: transparent;
   border-radius: inherit;
   content: "";
   pointer-events: none;
@@ -118,6 +118,7 @@ html[data-material="glass"] .surface {
   )
   .surface::after {
   border-color: var(--surface-glass-border);
+  border-right-color: var(--surface-glass-border);
 }
 
 html[data-intent="closed"] .surface:hover {
@@ -126,6 +127,7 @@ html[data-intent="closed"] .surface:hover {
 
 html[data-intent="closed"] .surface:hover::after {
   border-color: var(--surface-border-strong);
+  border-right-color: transparent;
 }
 
 html[data-intent="closed"][data-material="glass"] .surface:hover {
@@ -134,7 +136,15 @@ html[data-intent="closed"][data-material="glass"] .surface:hover {
 
 html[data-intent="preview"] .surface,
 html[data-intent="pinned"] .surface {
-  border-radius: var(--radius-open) 0 0 var(--radius-open);
+  border-radius: var(--radius-open);
+}
+
+:where(
+    html:not([data-material="glass"])[data-intent="preview"],
+    html:not([data-material="glass"])[data-intent="pinned"]
+  )
+  .surface::after {
+  border-right-color: var(--surface-border);
 }
 
 html[data-phase="closing"] .surface {
@@ -153,13 +163,18 @@ html[data-phase="closing"] .surface {
   height: var(--ribbon-height);
   place-items: center;
   padding: 0;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-closed) 0 0 var(--radius-closed);
   background: transparent;
   color: inherit;
   cursor: default;
   transform: translateY(-50%);
   transition:
+    width var(--motion-open) var(--ease-open),
+    height var(--motion-open) var(--ease-open),
+    right var(--motion-open) var(--ease-open),
+    border-color var(--motion-dwell) var(--ease-open),
+    border-radius var(--motion-open) var(--ease-open),
     background-color var(--motion-dwell) var(--ease-open),
     color var(--motion-dwell) var(--ease-open);
 }
@@ -186,8 +201,9 @@ html[data-phase="closing"] .surface {
     html[data-material="glass"][data-intent="pinned"]
   )
   .ribbon {
-  background: rgb(27 32 40 / 90%);
-  color: #f5f7fa;
+  border-color: rgb(255 255 255 / 52%);
+  background: rgb(247 250 255 / 34%);
+  color: #27313d;
 }
 
 :where(
@@ -200,8 +216,8 @@ html[data-phase="closing"] .surface {
     html[data-material="glass"][data-intent="pinned"]
   )
   .ribbon:focus-visible {
-  background: rgb(45 54 65 / 94%);
-  color: #ffffff;
+  background: rgb(247 250 255 / 48%);
+  color: #1d2630;
 }
 
 :where(
@@ -209,11 +225,12 @@ html[data-phase="closing"] .surface {
     html[data-material="glass"][data-intent="pinned"]
   )
   .ribbon[aria-pressed="true"] {
-  background: rgb(27 32 40 / 90%);
-  color: #f5f7fa;
+  background: rgb(247 250 255 / 40%);
+  color: #27313d;
 }
 
 .ribbon-glyph {
+  position: absolute;
   width: 15px;
   height: 15px;
   fill: none;
@@ -222,11 +239,97 @@ html[data-phase="closing"] .surface {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.2;
+  transition:
+    opacity var(--motion-dwell) var(--ease-open),
+    transform var(--motion-open) var(--ease-open);
 }
 
 .ribbon-glyph circle {
   fill: currentcolor;
   stroke: none;
+}
+
+.ribbon-handle,
+.ribbon-chevron {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--motion-dwell) var(--ease-open),
+    transform var(--motion-open) var(--ease-open);
+}
+
+.ribbon-handle {
+  top: 14px;
+  width: 2px;
+  height: 24px;
+  border-radius: 999px;
+  background: currentcolor;
+  transform: scaleY(0.5);
+}
+
+.ribbon-chevron {
+  bottom: 13px;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+  transform: translateX(3px);
+}
+
+:where(html[data-intent="preview"], html[data-intent="pinned"]) .ribbon {
+  right: 12px;
+  width: 36px;
+  height: 68px;
+  border-radius: 14px;
+}
+
+:where(
+    html:not([data-material="glass"])[data-intent="preview"],
+    html:not([data-material="glass"])[data-intent="pinned"]
+  )
+  .ribbon {
+  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 9%);
+  color: var(--text-muted);
+}
+
+:where(html[data-intent="preview"], html[data-intent="pinned"]) .ribbon-glyph {
+  opacity: 0;
+  transform: scale(0.78);
+}
+
+:where(html[data-intent="preview"], html[data-intent="pinned"]) .ribbon-handle,
+:where(html[data-intent="preview"], html[data-intent="pinned"])
+  .ribbon-chevron {
+  opacity: 0.72;
+  transform: translateX(0);
+}
+
+:where(html[data-intent="preview"], html[data-intent="pinned"]) .ribbon-handle {
+  opacity: 0.58;
+  transform: scaleY(1);
+}
+
+html[data-phase="closing"] .ribbon {
+  transition:
+    width var(--motion-close) var(--ease-close),
+    height var(--motion-close) var(--ease-close),
+    right var(--motion-close) var(--ease-close),
+    border-color var(--motion-close) var(--ease-close),
+    border-radius var(--motion-close) var(--ease-close),
+    background-color var(--motion-close) var(--ease-close),
+    color var(--motion-close) var(--ease-close);
+}
+
+html[data-phase="closing"] .ribbon-glyph,
+html[data-phase="closing"] .ribbon-handle,
+html[data-phase="closing"] .ribbon-chevron {
+  transition-duration: var(--motion-close);
+  transition-timing-function: var(--ease-close);
 }
 
 .drawer-content {
@@ -411,7 +514,10 @@ html[data-phase="closing"] .drawer-content {
   html[data-phase="closing"] .drawer-content,
   .drawer-pin,
   .drawer-close,
-  .ribbon,
+  html[data-phase] .ribbon,
+  html[data-phase] .ribbon-glyph,
+  html[data-phase] .ribbon-handle,
+  html[data-phase] .ribbon-chevron,
   .drawer-footer {
     transition-duration: 1ms;
     transition-delay: 0ms;

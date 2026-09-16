@@ -23,6 +23,13 @@ const GLASS_RIGHT_OVERSCAN: f64 = super::DRAWER_RADIUS;
 
 static MATERIAL: Mutex<&'static str> = Mutex::new("solid");
 
+#[derive(Clone, Copy)]
+struct MaterialFrames {
+    glass: NSRect,
+    host: NSRect,
+    content: NSRect,
+}
+
 pub struct NativeTransition {
     pub target: Rect,
     pub scale: f64,
@@ -47,21 +54,22 @@ pub fn refresh_material(app: &AppHandle) -> Result<&'static str, String> {
         let mtm = MainThreadMarker::new().ok_or_else(|| "main thread ausente".to_string())?;
         let ns = ns_window(&window)?;
 
-        if AnyClass::get(c"NSGlassEffectView").is_none()
-            || NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
-        {
-            clear_material(&ns)?;
-            return Ok("solid");
-        }
-
         let state = main_app.state::<Mutex<super::DesktopState>>();
         let state = state
             .lock()
             .map_err(|error| format!("Falha de sincronização interna: {error}"))?;
         let view = state.view();
-        let result = install_material(&ns, mtm, view);
+
+        if AnyClass::get(c"NSGlassEffectView").is_none()
+            || NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
+        {
+            clear_material(&ns)?;
+            drop(state);
+            return Ok("solid");
+        }
+
+        install_material(&ns, mtm, view)?;
         drop(state);
-        result?;
         Ok("glass")
     })?;
 
@@ -74,6 +82,9 @@ pub fn refresh_material(app: &AppHandle) -> Result<&'static str, String> {
 fn install_material(ns: &NSWindow, mtm: MainThreadMarker, view: DesktopView) -> Result<(), String> {
     if let Some(glass) = glass_view(ns) {
         set_material_appearance(&glass, view)?;
+        if view.phase == DrawerPhase::Resting {
+            reconcile_material_frames(ns, material_form(view))?;
+        }
         return Ok(());
     }
 
@@ -87,28 +98,19 @@ fn install_material(ns: &NSWindow, mtm: MainThreadMarker, view: DesktopView) -> 
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
 
+    let frames = material_frames(visible_bounds, material_form(view));
     let glass = NSGlassEffectView::new(mtm);
     glass.setStyle(NSGlassEffectViewStyle::Regular);
     set_material_appearance(&glass, view)?;
-    glass.setFrame(NSRect::new(
-        visible_bounds.origin,
-        NSSize::new(
-            visible_bounds.size.width + GLASS_RIGHT_OVERSCAN,
-            visible_bounds.size.height,
-        ),
-    ));
+    glass.setFrame(frames.glass);
     glass.setCornerRadius(material_radius(view));
-    glass.setAutoresizingMask(
-        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
-    );
-    let host = NSView::initWithFrame(mtm.alloc(), glass.bounds());
+    glass.setAutoresizingMask(material_autoresizing_mask(view.phase));
+    let host = NSView::initWithFrame(mtm.alloc(), frames.host);
     host.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
-    content.setFrame(visible_bounds);
-    content.setAutoresizingMask(
-        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
-    );
+    content.setFrame(frames.content);
+    content.setAutoresizingMask(material_autoresizing_mask(view.phase));
     ns.setContentView(None);
     host.addSubview(&content);
     glass.setContentView(Some(&host));
@@ -118,12 +120,39 @@ fn install_material(ns: &NSWindow, mtm: MainThreadMarker, view: DesktopView) -> 
 }
 
 fn clear_material(ns: &NSWindow) -> Result<(), String> {
-    let Some(glass) = glass_view(ns) else {
+    let Some(views) = material_views(ns)? else {
         return Ok(());
     };
-    let clip = ns
-        .contentView()
-        .ok_or_else(|| "raiz de recorte indisponível".to_string())?;
+
+    views.content.removeFromSuperview();
+    views.glass.setContentView(None);
+    views.content.setFrame(views.clip.bounds());
+    views.content.setAutoresizingMask(
+        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
+    );
+    ns.setContentView(Some(&views.content));
+    Ok(())
+}
+
+#[derive(Clone)]
+struct MaterialViews {
+    clip: Retained<NSView>,
+    glass: Retained<NSGlassEffectView>,
+    host: Retained<NSView>,
+    content: Retained<NSView>,
+}
+
+fn material_views(ns: &NSWindow) -> Result<Option<MaterialViews>, String> {
+    let Some(clip) = ns.contentView() else {
+        return Ok(None);
+    };
+    let Some(glass) = clip
+        .subviews()
+        .firstObject()
+        .and_then(|view| view.downcast::<NSGlassEffectView>().ok())
+    else {
+        return Ok(None);
+    };
     let host = glass
         .contentView()
         .ok_or_else(|| "host do material indisponível".to_string())?;
@@ -132,14 +161,12 @@ fn clear_material(ns: &NSWindow) -> Result<(), String> {
         .firstObject()
         .ok_or_else(|| "conteúdo do material indisponível".to_string())?;
 
-    content.removeFromSuperview();
-    glass.setContentView(None);
-    content.setFrame(clip.bounds());
-    content.setAutoresizingMask(
-        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
-    );
-    ns.setContentView(Some(&content));
-    Ok(())
+    Ok(Some(MaterialViews {
+        clip,
+        glass,
+        host,
+        content,
+    }))
 }
 
 fn glass_view(window: &NSWindow) -> Option<Retained<NSGlassEffectView>> {
@@ -149,6 +176,73 @@ fn glass_view(window: &NSWindow) -> Option<Retained<NSGlassEffectView>> {
         .firstObject()?
         .downcast::<NSGlassEffectView>()
         .ok()
+}
+
+fn material_frames(visible_bounds: NSRect, form: FormState) -> MaterialFrames {
+    let glass = NSRect::new(
+        visible_bounds.origin,
+        NSSize::new(
+            visible_bounds.size.width + material_overscan(form),
+            visible_bounds.size.height,
+        ),
+    );
+    MaterialFrames {
+        glass,
+        host: NSRect::new(NSPoint::new(0.0, 0.0), glass.size),
+        content: visible_bounds,
+    }
+}
+
+fn material_overscan(form: FormState) -> f64 {
+    match form {
+        FormState::Closed => GLASS_RIGHT_OVERSCAN,
+        FormState::Open => 0.0,
+    }
+}
+
+fn reconcile_material_frames(ns: &NSWindow, form: FormState) -> Result<(), String> {
+    let Some(views) = material_views(ns)? else {
+        return Ok(());
+    };
+    let frames = material_frames(views.clip.bounds(), form);
+    views.glass.setFrame(frames.glass);
+    views.host.setFrame(frames.host);
+    views.content.setFrame(frames.content);
+    views
+        .glass
+        .setAutoresizingMask(material_autoresizing_mask(DrawerPhase::Resting));
+    views
+        .content
+        .setAutoresizingMask(material_autoresizing_mask(DrawerPhase::Resting));
+    Ok(())
+}
+
+fn prepare_material_animation(views: &MaterialViews) {
+    views
+        .glass
+        .setAutoresizingMask(material_autoresizing_mask(DrawerPhase::Opening));
+    views
+        .content
+        .setAutoresizingMask(material_autoresizing_mask(DrawerPhase::Opening));
+}
+
+fn material_autoresizing_mask(phase: DrawerPhase) -> NSAutoresizingMaskOptions {
+    let mask = NSAutoresizingMaskOptions::ViewHeightSizable;
+    if phase == DrawerPhase::Resting {
+        mask | NSAutoresizingMaskOptions::ViewWidthSizable
+    } else {
+        mask
+    }
+}
+
+fn target_visible_bounds(visible_bounds: NSRect, target: Rect, scale: f64) -> NSRect {
+    NSRect::new(
+        visible_bounds.origin,
+        NSSize::new(
+            f64::from(target.width) / scale,
+            f64::from(target.height) / scale,
+        ),
+    )
 }
 
 fn material_radius(view: DesktopView) -> f64 {
@@ -249,6 +343,13 @@ pub fn animate_form(
         };
         let current_position = window.outer_position().map_err(|error| error.to_string())?;
         let frame = target_frame_from_current(ns.frame(), current_position, target, scale);
+        let material = material_views(&ns)?;
+        let target_material_frames = material.as_ref().map(|views| {
+            material_frames(
+                target_visible_bounds(views.clip.bounds(), target, scale),
+                form,
+            )
+        });
         let radius = match form {
             FormState::Open => super::DRAWER_RADIUS,
             FormState::Closed => super::RIBBON_RADIUS,
@@ -262,6 +363,7 @@ pub fn animate_form(
             }
         };
         let animation_ns = ns.clone();
+        let animation_material = material.clone();
         let changes = RcBlock::new(move |context: NonNull<NSAnimationContext>| {
             // AppKit fornece este contexto apenas durante o grupo de animação.
             let context = unsafe { context.as_ref() };
@@ -270,6 +372,10 @@ pub fn animate_form(
             animation_ns.animator().setFrame_display(frame, true);
             if let Some(glass) = glass_view(&animation_ns) {
                 glass.animator().setCornerRadius(radius);
+            }
+            if let (Some(views), Some(frames)) = (&animation_material, target_material_frames) {
+                views.glass.animator().setFrame(frames.glass);
+                views.content.animator().setFrame(frames.content);
             }
         });
         let completion = RcBlock::new(move || {
@@ -290,6 +396,9 @@ pub fn animate_form(
 
         if let Some(glass) = glass_view(&ns) {
             set_material_appearance(&glass, view)?;
+        }
+        if let Some(views) = material.as_ref() {
+            prepare_material_animation(views);
         }
 
         if focus {
@@ -391,5 +500,19 @@ mod tests {
             }),
             super::super::DRAWER_RADIUS
         );
+    }
+
+    #[test]
+    fn vidro_anima_o_excedente_sem_alargar_o_conteudo_visivel() {
+        let visible = NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(480.0, 300.0));
+        let closed = material_frames(visible, FormState::Closed);
+        let open = material_frames(visible, FormState::Open);
+
+        assert_eq!(closed.glass.size.width, 500.0);
+        assert_eq!(closed.host.size.width, 500.0);
+        assert_eq!(closed.content.size.width, 480.0);
+        assert_eq!(open.glass.size.width, 480.0);
+        assert_eq!(open.host.size.width, 480.0);
+        assert_eq!(open.content.size.width, 480.0);
     }
 }

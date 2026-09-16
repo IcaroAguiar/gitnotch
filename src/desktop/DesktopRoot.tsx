@@ -251,6 +251,15 @@ export function DesktopRoot() {
           <circle cx="5" cy="13" r="1.25" />
           <circle cx="10" cy="5" r="1.25" />
         </svg>
+        <span className="ribbon-handle" aria-hidden="true" />
+        <svg
+          className="ribbon-chevron"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="m9.5 4-4 4 4 4" />
+        </svg>
       </button>
       <section
         ref={contentRef}

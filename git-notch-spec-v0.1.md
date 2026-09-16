@@ -99,12 +99,12 @@ A implementação inicial aprovada usa uma única forma Tauri com o label `notch
 | Elemento | Implementação GN-01B |
 |---|---|
 | Fita visível | 28 × 112, encostada na borda direita e centralizada na área útil |
-| Gaveta | até 960 × 600; a largura e altura são limitadas pela área útil, preservando 24 px de margem quando possível |
+| Gaveta | até 960 × 600; aberta, flutua 24 px da borda direita e preserva 24 px de margem à esquerda quando a área útil permitir |
 | Borda | direita nesta entrega |
 | Posição vertical | centro da fita, limitado à área útil |
-| Raio | fita 12 e painel 20 somente nos cantos esquerdos; lado direito reto |
+| Raio | fita 12 somente nos cantos esquerdos; painel aberto 20 nos quatro cantos |
 
-Os tamanhos de design são convertidos pelo `scale_factor` para os pixels físicos da API Tauri. A área útil vem do monitor atual da forma, com fallback ao primário se ela ainda não estiver associada a um monitor. A borda direita da fita e da gaveta é `work.x + work.width`; a forma não avança para fora da área útil nem para outro monitor. No AppKit, o frame final é calculado a partir do frame corrente de `NSWindow` e da posição física corrente da própria forma; não depende da altura do monitor principal. Isso evita assumir uma origem global positiva ou escala única. Desconexão e monitores mistos ainda requerem teste nativo.
+Os tamanhos de design são convertidos pelo `scale_factor` para os pixels físicos da API Tauri. A área útil vem do monitor atual da forma, com fallback ao primário se ela ainda não estiver associada a um monitor. A fita fechada termina em `work.x + work.width`; a gaveta aberta termina 24 px lógicos antes dessa borda. Ao faltar espaço, o cálculo reduz a forma sem ultrapassar a área útil e equilibra as margens laterais possíveis, inclusive com origem negativa ou área muito pequena. No AppKit, o frame final é calculado a partir do frame corrente de `NSWindow` e da posição física corrente da própria forma; não depende da altura do monitor principal. Isso evita assumir uma origem global positiva ou escala única. Desconexão e monitores mistos ainda requerem teste nativo.
 
 O notch é na **borda da tela**, não o recorte físico de câmera do Mac. Não acompanhar a janela da ADE.
 
@@ -113,7 +113,8 @@ O notch é na **borda da tela**, não o recorte físico de câmera do Mac. Não 
 Revisão de interação de 10/09/2026: a prévia por hover e a fixação por clique substituem a regra anterior de hover apenas decorativo. A fita recolhida continua sem roubar foco.
 
 - O hover na fita abre uma prévia temporária após 120 ms de permanência. Clicar na fita fixa a gaveta; com a fita recolhida, o clique abre já fixado.
-- A mesma fita DOM permanece visível em `closed`, `preview`, `pinned` e `closing`. Ela fica acima do conteúdo, usa glyph Git discreto e rótulo dinâmico; `aria-pressed` é verdadeiro somente quando a gaveta está fixada.
+- Durante a prévia, um corredor estreito de hover liga a lateral direita da gaveta à borda da tela na altura original da fita. Ele impede recolhimento com o ponteiro parado na lacuna de 24 px, mas não altera a moldura da `NSWindow` nem sua região de hit-testing.
+- A mesma fita DOM permanece visível em `closed`, `preview`, `pinned` e `closing`. Fechada, ela usa glyph Git discreto e rótulo dinâmico; aberta, ela vira uma alça translúcida compacta com cabo grafite e chevron. `aria-pressed` é verdadeiro somente quando a gaveta está fixada.
 - A prévia não rouba foco. A gaveta fixada ignora a perda de foco e a saída do ponteiro.
 - A prévia recolhe após tolerância de saída de 250 ms da região da fita e da gaveta; nova entrada cancela o fechamento. Seleção de texto e captura real de ponteiro suspendem o fechamento temporário. Menus e diálogos entram na mesma guarda quando existirem.
 - Com a gaveta fixada, apenas um comando explícito recolhe: a própria fita, um controle de fixação, o botão Recolher ou `Esc`.
@@ -126,7 +127,7 @@ Revisão de interação de 10/09/2026: a prévia por hover e a fixação por cli
 - Reabrir deve restaurar seleção, expansões e âncora de leitura antes de receber novos dados quando esses conteúdos forem implementados.
 - Atalho global configurável, tray/menu bar e persistência de posição permanecem fora desta entrega.
 
-A transparência visual não determina hit-testing. Validar cliques fora das janelas e nos cantos arredondados esquerdos em cada plataforma; os cantos direitos pertencem à superfície reta. `pointer-events:none` em HTML não equivale a passar o clique a outro aplicativo.
+A transparência visual não determina hit-testing. Validar cliques fora das janelas e nos quatro cantos arredondados da gaveta aberta; a fita fechada mantém somente os cantos esquerdos arredondados. `pointer-events:none` em HTML não equivale a passar o clique a outro aplicativo.
 
 ### 4.4 Matriz de capacidades
 
@@ -183,7 +184,7 @@ No fallback sem material nativo, a versão inicial usa fundo sólido: não mostr
 
 ### 5.3 Integração nativa
 
-A implementação GN-01B usa `NSGlassEffectView` público de AppKit, no estilo `Regular`, pelo adaptador Rust com `objc2`. Uma raiz `NSView` do tamanho da janela recorta o vidro, que excede 20 pontos internamente à direita. O `contentView` documentado do vidro é um host de mesma largura que contém o conteúdo existente da janela na largura visível, com margem direita fixa de 20 pontos. O adaptador não adiciona uma subview arbitrária ao vidro nem mantém ponteiro Objective-C cru em estado global. No candidato atual, `NSAppearanceNameAqua` fica restrito ao `NSGlassEffectView` enquanto a forma está aberta ou fechando; em `closed/resting`, `appearance = nil` restaura a herança do sistema. Essa sincronização não define aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua.
+A implementação GN-01B usa `NSGlassEffectView` público de AppKit, no estilo `Regular`, pelo adaptador Rust com `objc2`. Uma raiz `NSView` do tamanho visível da janela recorta o vidro. Em `closed/resting`, o vidro e seu host excedem 20 pontos à direita para manter o lado direito da fita reto; durante a abertura, esse excedente anima até zero para expor os quatro cantos do vidro. O conteúdo Tauri permanece sempre no frame visível da raiz, e o adaptador reconcilia explicitamente os frames e `autoresizing` ao fim da transição para não reter 20 pontos fantasmas. O adaptador não adiciona uma subview arbitrária ao vidro nem mantém ponteiro Objective-C cru em estado global. No candidato atual, `NSAppearanceNameAqua` fica restrito ao `NSGlassEffectView` enquanto a forma está aberta ou fechando; em `closed/resting`, `appearance = nil` restaura a herança do sistema. Essa sincronização não define aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua. A janela permanece sem sombra nativa adicional: o candidato com `NSWindow.hasShadow` mostrou artefatos pretos nos cantos inferiores.
 
 O adaptador aplica o material uma vez, recupera o vidro pela hierarquia raiz de recorte → vidro e restaura o conteúdo original extraído do host quando o efeito não estiver disponível ou quando `accessibilityDisplayShouldReduceTransparency` estiver ativo. O modo efetivo (`glass` ou `solid`) volta ao frontend. Mudanças em `prefers-reduced-transparency`, `prefers-reduced-motion` e esquema de cor pedem nova leitura do modo efetivo; o material e a redução de transparência ainda exigem validação nativa em execução.
 
@@ -213,11 +214,11 @@ Valores do candidato atual, ainda sujeitos ao aceite nativo:
 | Recolher | 240 ms em `NSAnimationContext`, curva `cubic-bezier(.32,.72,0,1)` |
 | Movimento reduzido | duração nativa zero; CSS em 1 ms, sem atraso perceptível |
 
-A transição nativa altera frame e raio da mesma forma. Cada intenção recebe geração e fase (`opening`, `closing` ou `resting`). A confirmação vem do callback de conclusão de `NSAnimationContext`, não de uma espera fixa; callbacks de geração anterior são descartados. O efeito é iniciado no main thread depois de checar a geração atual, para impedir que uma ação atrasada redimensione ou foque a forma depois de uma intenção nova.
+A transição nativa altera o frame da mesma forma, o raio e o excedente do vidro. Cada intenção recebe geração e fase (`opening`, `closing` ou `resting`). A confirmação vem do callback de conclusão de `NSAnimationContext`, não de uma espera fixa; callbacks de geração anterior são descartados. O efeito é iniciado no main thread depois de checar a geração atual, para impedir que uma ação atrasada redimensione ou foque a forma depois de uma intenção nova.
 
 O conteúdo usa apenas opacidade e deslocamento curto, com atraso de 120 ms e duração de 180 ms na abertura; no fechamento, sai antes do estreitamento. Não emitir `set_size`/`set_position` por frame, nem animar blur, tint ou refração no JavaScript. Os valores 280/200 ms e suas curvas anteriores permanecem somente nos registros históricos de GN-01B.
 
-Estado da gaveta: as intenções são `closed`, `preview` e `pinned`; a fase visual é separada para permitir reversão. Seleção de texto e captura real de ponteiro suspendem o recolhimento automático da prévia. Menus, diálogos, busca e persistência de posição continuam fora da superfície vazia desta entrega. Durante o morph de raio, o hit-testing usa o maior raio como guarda conservadora somente nos cantos esquerdos; a equivalência com a camada apresentada pelo AppKit ainda precisa de prova nativa. O Boring Notch fornece referência de cancelamento e diferenciação entre abrir e fechar; não reutilizar seu código GPL por padrão. [R9]
+Estado da gaveta: as intenções são `closed`, `preview` e `pinned`; a fase visual é separada para permitir reversão. Seleção de texto e captura real de ponteiro suspendem o recolhimento automático da prévia. Menus, diálogos, busca e persistência de posição continuam fora da superfície vazia desta entrega. Durante o morph de raio, o hit-testing usa o maior raio como guarda conservadora nos quatro cantos quando a gaveta está aberta ou em transição e somente nos cantos esquerdos quando está fechada; a equivalência com a camada apresentada pelo AppKit ainda precisa de prova nativa. O Boring Notch fornece referência de cancelamento e diferenciação entre abrir e fechar; não reutilizar seu código GPL por padrão. [R9]
 
 ## 7. Organização da gaveta
 

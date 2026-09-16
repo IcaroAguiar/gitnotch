@@ -1,10 +1,20 @@
 # Validação da aba e da gaveta nativas (GN-01B)
 
-**Estado:** o refinamento atual de líquido/material de 16/09/2026 tem verificações automatizadas, bundle e QA nativa limitada concluídos. Hover, foco externo, acessibilidade, monitores mistos, hit-testing exato e viewport medido diretamente permanecem pendentes. As evidências históricas abaixo do refinamento registram candidatos anteriores; não há aceite visual do usuário para o candidato atual.
+**Estado:** o candidato de QA da gaveta flutuante de 16/09/2026 tem verificações automatizadas, bundle e QA nativa limitada concluídos. Hover físico, foco externo, acessibilidade, monitores mistos, hit-testing exato e largura do conteúdo medida diretamente permanecem pendentes. As evidências históricas abaixo registram candidatos anteriores; não há aceite visual do usuário para este candidato.
 
-Revisão histórica de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O refinamento de encaixe partiu de `137de88d0d42fff635ed79f6f60692e06eff19eb`; o refinamento atual de material partiu de `7de574964ada6509221e88e1805484ed329448a6`. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
+Base do candidato atual: `f321d35976d432f2fc7408004d658d60fb4668ee`. Revisão histórica de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O refinamento de encaixe partiu de `137de88d0d42fff635ed79f6f60692e06eff19eb`; o refinamento anterior de material partiu de `7de574964ada6509221e88e1805484ed329448a6`. Ambiente de build e QA: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
 
-## Verificações automatizadas
+## Candidato de QA: drawer flutuante em 16/09/2026
+
+- A única `NSWindow` mantém a fita fechada de 28 × 112 encostada à direita e abre a mesma janela em 960 × 600, com quatro cantos de 20 px e lacuna de 24 px lógicos até a borda direita. A alça aberta é translúcida, mede 36 × 68 e reúne cabo grafite e chevron; o estado vazio continua sem dados Git artificiais.
+- `pnpm check` passou com Biome, TypeScript e 7 testes Node. `pnpm rust:check` passou com rustfmt, Clippy em `-D warnings` e 35 testes Rust, inclusive margem em escala 2, área útil pequena/origem negativa, cantos abertos e corredor de hover. Logs: `artifacts/floating-drawer/logs/pnpm-check-candidate2-no-shadow.log` e `artifacts/floating-drawer/logs/rust-check-candidate2-no-shadow.log`.
+- `pnpm exec tauri build --bundles app -- --locked` passou e produziu `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável `Contents/MacOS/gitnotch` tem SHA-256 `b2b7a26469060b9a5f94fda8ac15f990fefc5b43f87d8837e6f5c3759670b630`. Log: `artifacts/floating-drawer/logs/tauri-bundle-app-candidate2-no-shadow.log`. `git diff --check` também passou.
+- Na QA nativa do macOS 27.0, `artifacts/floating-drawer/final-light.png` e `final-dark.png` mostram o vidro limpo com quatro cantos, lacuna de 24 px e alça; `final-closed.png` mostra a fita restaurada. Os frames em 19 s (aberta) e 7 s (fechada) de `final-cycle.mp4` foram inspecionados; o MP4 derivado preserva os 20,044 s de timing do MOV. `Esc`, clique na alça, Recolher e múltiplas reaberturas foram observados.
+- `artifacts/floating-drawer/final-geometry.jsonl` tem 808 amostras em 20 s para a única janela `2708`. Aberta: `1576,391,960,600`, direita `2536` em uma tela que termina em `2560` (lacuna 24). Fechada: `2532,635,28,112`, direita `2560`. O centro vertical foi `691`, ou `691,5` nos arredondamentos intermediários.
+- O primeiro candidato ligou a sombra de `NSWindow` e apresentou borda e triângulos pretos nos cantos inferiores. O candidato acima mantém a sombra desabilitada; não há alegação de elevação por sombra.
+- Ainda faltam hover com ponteiro físico, escala/DPI e monitores reais, acessibilidade, foco e hit-testing entre aplicativos, e a medição nativa direta da largura do conteúdo. A cobertura unitária desses contratos não substitui essas provas.
+
+## Verificações automatizadas históricas
 
 - `pnpm check` passou: Biome, TypeScript e 7 testes Node. Inclui o contrato da janela/capability e o descarte de snapshots atrasados, inclusive `Opening` da mesma geração após `Resting`. Log: `artifacts/premium-lateral/pnpm-check-final.log`.
 - `pnpm build` passou e produziu assets estáticos locais em `dist`.
@@ -18,14 +28,14 @@ A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linu
 
 ## Contrato implementado
 
-- Uma única forma nativa `notch` nasce em 28 × 112 e expande para até 960 × 600 lógicos, limitada pela área útil do monitor atual e encostada pela direita.
+- Uma única forma nativa `notch` nasce em 28 × 112 encostada à direita e expande para até 960 × 600 lógicos; aberta, ela preserva 24 px lógicos da borda direita e limita a forma à área útil atual.
 - Rust mantém `DrawerIntent` (`closed`, `preview`, `pinned`), `DrawerPhase` (`resting`, `opening`, `closing`) e geração monotônica.
 - A animação macOS usa `NSAnimationContext`; o callback de conclusão confirma a fase somente se a geração ainda for atual. Não há temporizador fixo de conclusão no macOS.
 - A checagem da geração e o início de foco/evento/frame ocorrem no main thread. O callback agenda a conclusão após liberar o mutex, evitando reentrância de duração zero.
-- Material usa `NSGlassEffectView` `Regular` dentro de uma raiz de recorte do tamanho da janela. O vidro e seu host excedem 20 pontos somente à direita, enquanto o conteúdo original preserva a largura visível da janela. O fallback sólido restaura esse conteúdo sem reter ponteiro Objective-C cru.
+- Material usa `NSGlassEffectView` `Regular` dentro de uma raiz de recorte do tamanho da janela. O vidro e seu host excedem 20 pontos somente em `closed/resting` e animam a zero ao abrir; o conteúdo original preserva a largura visível da janela. O fallback sólido restaura esse conteúdo sem reter ponteiro Objective-C cru.
 - O frontend sincroniza preferências de movimento/transparência/esquema de cor, descarta snapshots atrasados e mantém a prévia aberta durante seleção ou captura real de ponteiro.
 
-## Candidato atual: refinamento líquido/material em 16/09/2026
+## Candidato anterior: refinamento líquido/material em 16/09/2026
 
 Código do bundle verificado: `f0b2412bb75fc379a9d41e2f83a58df1f7cea659`. O commit seguinte apenas identifica este SHA na documentação.
 

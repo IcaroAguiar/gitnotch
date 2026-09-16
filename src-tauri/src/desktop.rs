@@ -14,7 +14,7 @@ const RIBBON_WIDTH: u32 = 28;
 const RIBBON_HEIGHT: u32 = 112;
 const DRAWER_WIDTH: u32 = 960;
 const DRAWER_MAX_HEIGHT: u32 = 600;
-const DRAWER_HORIZONTAL_MARGIN: u32 = 24;
+const DRAWER_EDGE_MARGIN: u32 = 24;
 const DRAWER_HEIGHT_MARGIN: u32 = 24;
 #[cfg(target_os = "macos")]
 const OPEN_MS: u64 = 380;
@@ -90,6 +90,12 @@ pub enum DrawerAction {
 pub enum FormState {
     Closed,
     Open,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RoundedCorners {
+    Left,
+    All,
 }
 
 #[derive(Debug)]
@@ -362,19 +368,27 @@ pub fn spawn_hover_watcher(app: AppHandle) {
             let Some(form) = window_bounds(&app, NOTCH_LABEL) else {
                 continue;
             };
-            let inside = contains(expand(form, HOVER_MARGIN), point.0, point.1);
+            let work_area = active_work_area(&app).ok().flatten();
+            let scale = work_area
+                .map(|(_, scale)| scale)
+                .unwrap_or_else(|| scale_of(&app));
+            let hover_margin = scaled(HOVER_MARGIN, scale);
 
             let state = app.state::<Mutex<DesktopState>>();
-            let (action, radius) = match state.lock() {
+            let (action, radius, corners) = match state.lock() {
                 Ok(mut guard) => {
-                    let radius = hit_test_radius(guard.view());
-                    (guard.pointer(inside, moved, Instant::now()), radius)
+                    let view = guard.view();
+                    let inside =
+                        hover_contains(form, view, work_area, hover_margin, point.0, point.1);
+                    let action = guard.pointer(inside, moved, Instant::now());
+                    let view = guard.view();
+                    (action, hit_test_radius(view), hit_test_corners(view))
                 }
-                Err(_) => (DrawerAction::Unchanged, RIBBON_RADIUS),
+                Err(_) => (DrawerAction::Unchanged, RIBBON_RADIUS, RoundedCorners::Left),
             };
 
             let corner = contains(form, point.0, point.1)
-                && outside_left_rounded_corners(form, radius * scale_of(&app), point.0, point.1);
+                && outside_rounded_corners(form, radius * scale, corners, point.0, point.1);
             if ignoring != Some(corner)
                 && let Some(window) = app.get_webview_window(NOTCH_LABEL)
             {
@@ -604,23 +618,70 @@ fn expand(rect: Rect, margin: u32) -> Rect {
     }
 }
 
+fn hover_contains(
+    form: Rect,
+    view: DesktopView,
+    work_area: Option<(Rect, f64)>,
+    margin: u32,
+    x: i32,
+    y: i32,
+) -> bool {
+    if contains(expand(form, margin), x, y) {
+        return true;
+    }
+
+    if view.intent != DrawerIntent::Preview {
+        return false;
+    }
+
+    let Some((work, scale)) = work_area else {
+        return false;
+    };
+    let ribbon = ribbon_rect(work, scale);
+    preview_hover_bridge(form, ribbon, work, margin).is_some_and(|bridge| contains(bridge, x, y))
+}
+
+fn preview_hover_bridge(form: Rect, ribbon: Rect, work: Rect, margin: u32) -> Option<Rect> {
+    let form_right = form.x + form.width as i32;
+    let work_right = work.x + work.width as i32;
+    if form_right < work.x || form_right >= work_right {
+        return None;
+    }
+
+    let top = (ribbon.y - margin as i32).max(work.y);
+    let bottom = (ribbon.y + ribbon.height as i32 + margin as i32).min(work.y + work.height as i32);
+    if bottom <= top {
+        return None;
+    }
+
+    Some(Rect {
+        x: form_right,
+        y: top,
+        width: (work_right - form_right) as u32,
+        height: (bottom - top) as u32,
+    })
+}
+
 fn contains(rect: Rect, x: i32, y: i32) -> bool {
     x >= rect.x && x < rect.x + rect.width as i32 && y >= rect.y && y < rect.y + rect.height as i32
 }
 
-fn outside_left_rounded_corners(rect: Rect, radius: f64, x: i32, y: i32) -> bool {
+fn outside_rounded_corners(
+    rect: Rect,
+    radius: f64,
+    corners: RoundedCorners,
+    x: i32,
+    y: i32,
+) -> bool {
     let radius = radius
         .min(f64::from(rect.width) / 2.0)
         .min(f64::from(rect.height) / 2.0);
     let px = f64::from(x);
     let py = f64::from(y);
     let left = f64::from(rect.x);
+    let right = f64::from(rect.x + rect.width as i32);
     let top = f64::from(rect.y);
     let bottom = f64::from(rect.y + rect.height as i32);
-    if px >= left + radius {
-        return false;
-    }
-    let center_x = left + radius;
     let center_y = if py < top + radius {
         top + radius
     } else if py >= bottom - radius {
@@ -628,10 +689,24 @@ fn outside_left_rounded_corners(rect: Rect, radius: f64, x: i32, y: i32) -> bool
     } else {
         return false;
     };
+    let center_x = if px < left + radius {
+        left + radius
+    } else if corners == RoundedCorners::All && px >= right - radius {
+        right - radius
+    } else {
+        return false;
+    };
 
     let dx = px - center_x;
     let dy = py - center_y;
     dx * dx + dy * dy > radius * radius
+}
+
+fn hit_test_corners(view: DesktopView) -> RoundedCorners {
+    match (view.intent, view.phase) {
+        (DrawerIntent::Closed, DrawerPhase::Resting) => RoundedCorners::Left,
+        _ => RoundedCorners::All,
+    }
 }
 
 fn hit_test_radius(view: DesktopView) -> f64 {
@@ -695,9 +770,10 @@ pub fn ribbon_rect(work: Rect, scale: f64) -> Rect {
 
 pub fn open_rect(work: Rect, scale: f64) -> Rect {
     let ribbon = ribbon_rect(work, scale);
+    let edge_margin = scaled(DRAWER_EDGE_MARGIN, scale).min(work.width.saturating_sub(1) / 2);
     let maximum_width = work
         .width
-        .saturating_sub(scaled(DRAWER_HORIZONTAL_MARGIN, scale))
+        .saturating_sub(edge_margin.saturating_mul(2))
         .max(1);
     let width = scaled(DRAWER_WIDTH, scale).min(maximum_width);
     let maximum_height = work
@@ -710,7 +786,7 @@ pub fn open_rect(work: Rect, scale: f64) -> Rect {
     let y = (center - (height / 2) as i32).clamp(work.y, max_y.max(work.y));
 
     Rect {
-        x: work.x + (work.width - width) as i32,
+        x: work.x + (work.width - edge_margin - width) as i32,
         y,
         width,
         height,
@@ -1043,12 +1119,12 @@ mod tests {
     }
 
     #[test]
-    fn forma_aberta_ancora_na_borda_e_centraliza_na_fita() {
+    fn forma_aberta_flutua_a_24_px_da_borda_e_centraliza_na_fita() {
         let rect = open_rect(work_area(), 1.0);
 
         assert_eq!(rect.width, DRAWER_WIDTH);
         assert_eq!(rect.height, DRAWER_MAX_HEIGHT);
-        assert_eq!(rect.x + rect.width as i32, 1920);
+        assert_eq!(rect.x + rect.width as i32, 1920 - DRAWER_EDGE_MARGIN as i32);
         assert_eq!(
             rect.y + rect.height as i32 / 2,
             ribbon_rect(work_area(), 1.0).y + RIBBON_HEIGHT as i32 / 2
@@ -1065,8 +1141,11 @@ mod tests {
         };
         let rect = open_rect(work, 1.0);
 
-        assert_eq!(rect.x, -1920 + 1280 - DRAWER_WIDTH as i32);
-        assert_eq!(rect.x + rect.width as i32, -640);
+        assert_eq!(
+            rect.x,
+            -1920 + 1280 - DRAWER_EDGE_MARGIN as i32 - DRAWER_WIDTH as i32
+        );
+        assert_eq!(rect.x + rect.width as i32, -640 - DRAWER_EDGE_MARGIN as i32);
         assert_eq!(rect.height, DRAWER_MAX_HEIGHT);
         assert_eq!(rect.y, 60);
     }
@@ -1081,10 +1160,47 @@ mod tests {
         };
         let rect = open_rect(work, 1.0);
 
-        assert_eq!(rect.width, 876);
+        assert_eq!(rect.width, 852);
         assert_eq!(rect.height, 576);
         assert_eq!(rect.x, -876);
         assert_eq!(rect.y, 12);
+    }
+
+    #[test]
+    fn margem_direita_escala_com_o_monitor_e_nao_desloca_a_origem_negativa() {
+        let work = Rect {
+            x: -2560,
+            y: 80,
+            width: 2880,
+            height: 1800,
+        };
+        let rect = open_rect(work, 2.0);
+
+        assert_eq!(rect.width, DRAWER_WIDTH * 2);
+        assert_eq!(rect.height, DRAWER_MAX_HEIGHT * 2);
+        assert_eq!(
+            rect.x + rect.width as i32,
+            320 - (DRAWER_EDGE_MARGIN * 2) as i32
+        );
+        assert!(rect.x >= work.x);
+        assert!(rect.y >= work.y);
+    }
+
+    #[test]
+    fn area_util_minima_preserva_a_forma_dentro_da_origem_negativa() {
+        let work = Rect {
+            x: -20,
+            y: -10,
+            width: 10,
+            height: 10,
+        };
+        let rect = open_rect(work, 2.0);
+
+        assert_eq!(rect.width, 2);
+        assert_eq!(rect.height, 1);
+        assert_eq!(rect.x, work.x + 4);
+        assert!(rect.y >= work.y);
+        assert!(rect.y + rect.height as i32 <= work.y + work.height as i32);
     }
 
     #[test]
@@ -1109,7 +1225,7 @@ mod tests {
     }
 
     #[test]
-    fn apenas_cantos_esquerdos_arredondados_ignoram_o_ponteiro() {
+    fn forma_fechada_ignora_apenas_cantos_esquerdos_arredondados() {
         let rect = Rect {
             x: 100,
             y: 200,
@@ -1117,11 +1233,66 @@ mod tests {
             height: 80,
         };
 
-        assert!(outside_left_rounded_corners(rect, 20.0, 100, 200));
-        assert!(outside_left_rounded_corners(rect, 20.0, 100, 279));
-        assert!(!outside_left_rounded_corners(rect, 20.0, 120, 200));
-        assert!(!outside_left_rounded_corners(rect, 20.0, 219, 200));
-        assert!(!outside_left_rounded_corners(rect, 20.0, 219, 279));
+        assert!(outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::Left,
+            100,
+            200
+        ));
+        assert!(outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::Left,
+            100,
+            279
+        ));
+        assert!(!outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::Left,
+            120,
+            200
+        ));
+        assert!(!outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::Left,
+            219,
+            200
+        ));
+    }
+
+    #[test]
+    fn forma_aberta_ignora_os_quatro_cantos_arredondados() {
+        let rect = Rect {
+            x: 100,
+            y: 200,
+            width: 120,
+            height: 80,
+        };
+
+        assert!(outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::All,
+            100,
+            200
+        ));
+        assert!(outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::All,
+            219,
+            200
+        ));
+        assert!(outside_rounded_corners(
+            rect,
+            20.0,
+            RoundedCorners::All,
+            219,
+            279
+        ));
     }
 
     #[test]
@@ -1150,5 +1321,70 @@ mod tests {
             }),
             DRAWER_RADIUS
         );
+        assert_eq!(
+            hit_test_corners(DesktopView {
+                intent: DrawerIntent::Closed,
+                phase: DrawerPhase::Resting,
+                generation: 1,
+            }),
+            RoundedCorners::Left
+        );
+        assert_eq!(
+            hit_test_corners(DesktopView {
+                intent: DrawerIntent::Closed,
+                phase: DrawerPhase::Closing,
+                generation: 2,
+            }),
+            RoundedCorners::All
+        );
+    }
+
+    #[test]
+    fn corredor_da_previa_cobre_so_a_lacuna_da_fita_na_escala_atual() {
+        let work = work_area();
+        let scale = 2.0;
+        let form = open_rect(work, scale);
+        let ribbon = ribbon_rect(work, scale);
+        let bridge = preview_hover_bridge(form, ribbon, work, scaled(HOVER_MARGIN, scale))
+            .expect("a gaveta aberta deixa uma lacuna de hover");
+
+        assert_eq!(bridge.x, form.x + form.width as i32);
+        assert_eq!(bridge.x + bridge.width as i32, work.x + work.width as i32);
+        assert!(contains(
+            bridge,
+            work.x + work.width as i32 - 1,
+            ribbon.y + ribbon.height as i32 / 2
+        ));
+        assert!(!contains(bridge, work.x + work.width as i32 - 1, work.y));
+    }
+
+    #[test]
+    fn ponteiro_parado_na_lacuna_nao_recolhe_a_previa() {
+        let (mut state, start) = preview_state();
+        let work = work_area();
+        let scale = 2.0;
+        let form = open_rect(work, scale);
+        let point = (
+            work.x + work.width as i32 - 1,
+            ribbon_rect(work, scale).y + 20,
+        );
+
+        assert!(hover_contains(
+            form,
+            state.view(),
+            Some((work, scale)),
+            scaled(HOVER_MARGIN, scale),
+            point.0,
+            point.1
+        ));
+        assert_eq!(
+            state.pointer(
+                true,
+                false,
+                start + HOVER_EXIT_TOLERANCE + Duration::from_millis(60)
+            ),
+            DrawerAction::Unchanged
+        );
+        assert_eq!(state.view().intent, DrawerIntent::Preview);
     }
 }
