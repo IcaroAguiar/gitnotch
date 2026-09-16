@@ -80,7 +80,7 @@ pnpm exec tauri build --bundles app -- --locked
 
 ## Refinamento de encaixe da fita em 16/09/2026
 
-O diff atual parte de `137de88d0d42fff635ed79f6f60692e06eff19eb`. A fita mede 28 × 112 lógicos, mantém seu centro vertical e sua borda direita em `work.x + work.width`. A folha aberta continua na mesma `NSWindow`, também presa à direita e limitada a 960 × 600 sem avançar para outro monitor. A superfície e o hit-testing arredondam apenas os cantos esquerdos.
+O código do bundle verificado corresponde ao commit `473f917ac3e679ca1bdcb66cb7be6476f93fa74a`, sobre a base `137de88d0d42fff635ed79f6f60692e06eff19eb`. A fita mede 28 × 112 lógicos, mantém seu centro vertical e sua borda direita em `work.x + work.width`. A folha aberta continua na mesma `NSWindow`, também presa à direita e limitada a 960 × 600 sem avançar para outro monitor. A superfície e o hit-testing arredondam apenas os cantos esquerdos.
 
 No macOS, uma raiz `NSView` do tamanho da janela recorta um `NSGlassEffectView` 20 pontos mais largo à direita. O `contentView` do vidro é um host de mesma largura, que contém o conteúdo Tauri na largura da janela com margem direita fixa de 20 pontos. A fita DOM fica acima de `drawer-content` em `closed`, `preview`, `pinned` e `closing`; ela usa um glyph Git discreto, rótulo dinâmico e `aria-pressed` somente quando fixada. O trilho SVG e a regra de container que ocultava a fita foram removidos.
 
