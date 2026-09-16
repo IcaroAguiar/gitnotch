@@ -2,7 +2,7 @@
 
 **Estado:** implementação, verificações automatizadas, validação limitada do segundo candidato e smoke do binário final concluídos; aceite visual do produto e cenários sem automação permanecem pendentes.
 
-Base verificada: `848ec9670ca45fca489fb9847bf00616bad2fdca`, com as alterações deste ticket ainda não commitadas. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
+Revisão de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O build e o smoke foram executados sobre o conteúdo que compõe essa revisão; a atualização posterior deste registro altera somente documentação. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
 
 ## Verificações automatizadas
 
@@ -31,7 +31,7 @@ Base verificada: `848ec9670ca45fca489fb9847bf00616bad2fdca`, com as alterações
 ## Smoke nativo do bundle final
 
 - Após a correção que lê o raio do material no main thread sob o mutex, o bundle SHA-256 `0cd439586e673de45fcf02f5039ad9b5dea305ca8e041f5b7ffd81e5ae495f84` abriu, fixou, recolheu por `Esc`, recolheu pelo controle e abriu novamente.
-- A janela observada tinha id 17.450, posição `x=1.600`, `y=391` e alvo 960 × 600 no display primário. `artifacts/premium-lateral/native-final-cycle.mov` e `artifacts/premium-lateral/native-final-open.png` registram o smoke.
+- A janela observada tinha id 17.450, posição `x=1.600`, `y=391` e alvo 960 × 600 no display primário. `artifacts/premium-lateral/native-final-cycle.mov` e `artifacts/premium-lateral/native-final-open.png` registram o smoke. `artifacts/premium-lateral/native-final-demo.mp4` contém os primeiros sete segundos do vídeo, sem mudança de velocidade.
 - O smoke não demonstra fluxo com dados reais, aceite visual do produto, hover com ponteiro físico, foco entre aplicativos, seleção/captura de ponteiro, cantos transparentes, preferências de acessibilidade ou segundo monitor.
 
 ## Evidência nativa já observada no primeiro candidato
@@ -53,7 +53,8 @@ A validação final precisa cobrir:
 5. clique nas bordas arredondadas e no aplicativo atrás;
 6. seleção e captura real de ponteiro sem recolhimento automático;
 7. interrupção abrir/recolher e preferências de movimento reduzido ou transparência reduzida;
-8. display secundário, escalas distintas e desconexão de monitor.
+8. display secundário, escalas distintas e desconexão de monitor;
+9. uso sustentado de CPU/memória e orçamento de recursos.
 
 ## Limites conhecidos
 
@@ -65,7 +66,7 @@ A validação final precisa cobrir:
 ## Reprodução de build
 
 ```sh
-source .local/use-rust.sh
+# Rust do rust-toolchain.toml e pnpm devem estar no PATH.
 export DEVELOPER_DIR=/Library/Developer/CommandLineTools
 pnpm check
 pnpm build
