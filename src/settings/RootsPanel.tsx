@@ -14,6 +14,10 @@ type StatusState =
   | { kind: "ready"; summary: string }
   | { kind: "error"; message: string };
 
+type RootsPanelProps = {
+  onBeforeSelectRoot: () => Promise<void>;
+};
+
 function branchLabel(status: RepoStatusSnapshot): string {
   const { branch } = status;
   if (branch.isUnborn) return "sem commits";
@@ -58,7 +62,7 @@ function RootStatusLine({ status }: { status?: StatusState }) {
   return <span className="status">{status.summary}</span>;
 }
 
-export function RootsPanel() {
+export function RootsPanel({ onBeforeSelectRoot }: RootsPanelProps) {
   const [view, setView] = useState<WorkspaceView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -149,6 +153,7 @@ export function RootsPanel() {
     const requestedEpoch = epochAcceptor.current.current();
     setBusy(true);
     try {
+      await onBeforeSelectRoot();
       const next = await selectRoot();
       if (next && acceptView(next)) {
         setError(null);
@@ -180,10 +185,9 @@ export function RootsPanel() {
   };
 
   return (
-    <main>
-      <header>
-        <span className="wordmark">Git Notch</span>
-        <h1>Pastas autorizadas</h1>
+    <section className="roots-panel" aria-labelledby="authorized-roots-title">
+      <header className="roots-panel-header">
+        <h1 id="authorized-roots-title">Pastas autorizadas</h1>
         <p>
           O aplicativo lê repositórios dentro destas pastas sem alterar nada
           neles.
@@ -233,8 +237,6 @@ export function RootsPanel() {
           </li>
         ))}
       </ul>
-
-      <footer>Prévia de desenvolvimento · 0.1.0</footer>
-    </main>
+    </section>
   );
 }

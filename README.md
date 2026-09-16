@@ -4,9 +4,9 @@ Utilitário desktop local para acompanhar alterações de vários checkouts Git 
 
 ## Estado do projeto
 
-A leitura Git somente de leitura e o registro de raízes autorizadas com preferências locais estão implementados. O notch, a gaveta e a descoberta de repositórios ainda não estão implementados. Não há release publicada.
+Há uma fita e uma gaveta nativas em macOS na mesma janela, com estado compartilhado no Rust. A gaveta lista raízes autorizadas com preferências locais e seus status Git somente de leitura; navegação de repositórios e diffs ainda não estão conectadas à interface. Não há release publicada.
 
-Tauri 2, React/TypeScript e Rust. O frontend é empacotado localmente e abre sem servidor de desenvolvimento. O Git instalado será a fonte de estado dos checkouts quando a leitura for implementada.
+Tauri 2, React/TypeScript e Rust. O frontend é empacotado localmente e abre sem servidor de desenvolvimento. O Git instalado será a fonte de estado dos checkouts quando a leitura for conectada à interface.
 
 ## Escopo
 
@@ -36,7 +36,7 @@ pnpm rust:check
 pnpm desktop:build -- --locked
 ```
 
-`pnpm check` executa lint, typecheck e testes do contrato de configuração desktop. `pnpm rust:check` executa rustfmt, Clippy e o test runner Rust. Execute `pnpm build` antes dos checks Rust, pois o contexto Tauri incorpora os assets de dist.
+`pnpm check` executa lint, typecheck e testes do contrato de configuração desktop. `pnpm rust:check` executa rustfmt, Clippy e o test runner Rust, que cobre a geometria e o estado da gaveta, autorização de raízes, IPC e o leitor Git. Execute `pnpm build` antes dos checks Rust, pois o contexto Tauri incorpora os assets de dist.
 
 Para gerar um pacote nativo local:
 

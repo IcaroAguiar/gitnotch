@@ -151,7 +151,7 @@ impl TestApp {
             .build(context)
             .expect("app de teste");
         app.manage(AppState::new(workspace));
-        let webview = WebviewWindowBuilder::new(&app, "main", Default::default())
+        let webview = WebviewWindowBuilder::new(&app, "notch", Default::default())
             .build()
             .expect("webview de teste");
 
@@ -174,11 +174,11 @@ impl TestApp {
 }
 
 #[test]
-fn custom_commands_are_limited_to_the_main_webview_and_declared_allowlist() {
+fn custom_commands_are_limited_to_the_notch_webview_and_declared_allowlist() {
     let test = TestApp::new();
 
     invoke(&test.webview, "get_workspace_view", serde_json::json!({}))
-        .expect("o webview main deve receber o comando declarado");
+        .expect("o webview notch deve receber o comando declarado");
 
     let other_webview = WebviewWindowBuilder::new(&test.app, "untrusted", Default::default())
         .build()

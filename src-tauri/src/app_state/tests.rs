@@ -93,7 +93,7 @@ fn authorize_is_idempotent_for_the_same_canonical_path() {
 
 #[test]
 #[cfg(unix)]
-fn non_utf8_root_path_is_rejected_before_it_can_be_persisted() {
+fn non_utf8_path_is_rejected_by_the_persistence_encoding_boundary() {
     use std::os::unix::ffi::OsStringExt;
 
     let dir = TempDir::new("non-utf8");
@@ -106,6 +106,36 @@ fn non_utf8_root_path_is_rejected_before_it_can_be_persisted() {
     assert!(
         error.to_string().contains("UTF-8"),
         "erro inesperado: {error}"
+    );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn non_utf8_directory_is_rejected_without_persisting_authorization_state() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let dir = TempDir::new("non-utf8-authorize");
+    let root = dir
+        .path()
+        .join(std::ffi::OsString::from_vec(b"checkout-\xff".to_vec()));
+    fs::create_dir(&root).expect("a fixture Linux deve aceitar bytes não UTF-8");
+    let config = dir.path().join("config");
+    let mut workspace = Workspace::load(config.clone());
+
+    let error = workspace
+        .authorize_root(&root)
+        .expect_err("uma raiz não UTF-8 não pode ser persistida como JSON");
+
+    assert!(matches!(error, WorkspaceError::InvalidSelection(_)));
+    assert!(
+        error.to_string().contains("UTF-8"),
+        "erro inesperado: {error}"
+    );
+    assert_eq!(workspace.epoch(), 1);
+    assert!(workspace.view().roots.is_empty());
+    assert!(
+        !config.join("settings.json").exists(),
+        "a autorização recusada não pode criar preferências"
     );
 }
 

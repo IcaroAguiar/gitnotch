@@ -1,9 +1,10 @@
 # Dependências diretas
 
-As versões abaixo são as resolvidas para a aplicação mínima. Consulte os lockfiles para a árvore transitiva. Não há dependência de serviço remoto em runtime.
+As versões abaixo são as resolvidas para o aplicativo. Consulte os lockfiles para a árvore transitiva. Não há dependência de serviço remoto em runtime.
 
 | Dependência | Versão | Licença declarada | Uso |
 |---|---|---|---|
+| @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT | Comandos IPC e label da janela |
 | React e React DOM | 19.2.8 | MIT | Interface |
 | Tauri | 2.11.5 | MIT ou Apache-2.0 | Janela e runtime nativo |
 | tauri-build | 2.6.3 | MIT ou Apache-2.0 | Build Rust |
@@ -17,8 +18,12 @@ As versões abaixo são as resolvidas para a aplicação mínima. Consulte os lo
 | Tipos React DOM | 19.2.5 | MIT | Desenvolvimento |
 | serde | 1.0.229 | MIT ou Apache-2.0 | Serialização de tipos e modelos de domínio |
 | serde_json | 1.0.151 | MIT ou Apache-2.0 | Serialização de dados para IPC |
-| @tauri-apps/api | 2.11.1 | Apache-2.0 ou MIT | Ponte IPC do frontend (`invoke`) |
 | tauri-plugin-dialog | 2.7.3 | Apache-2.0 ou MIT | Seletor nativo de pastas |
+| objc2 | 0.6.4 | MIT | Ponte Rust para objetos Objective-C no adaptador macOS |
+| objc2-app-kit | 0.3.2 | Zlib ou Apache-2.0 ou MIT | Janela, animação e `NSGlassEffectView` no macOS |
+| objc2-foundation | 0.3.2 | MIT | Tipos geométricos usados pelo adaptador macOS |
+| objc2-quartz-core | 0.3.2 | Zlib ou Apache-2.0 ou MIT | Curvas de tempo da animação AppKit |
+| block2 | 0.6.2 | MIT | Callback de conclusão de `NSAnimationContext` |
 
 O `tauri` 2.11.5 também é usado como dev-dependency com a feature `test` para os testes de IPC com o runtime simulado. Essa feature não entra no binário distribuído.
 

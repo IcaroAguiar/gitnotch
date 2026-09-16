@@ -7,6 +7,11 @@ fn main() {
             "get_repo_status",
             "get_file_diff",
             "get_git_capabilities",
+            "toggle_drawer",
+            "collapse_drawer",
+            "get_desktop_capabilities",
+            "set_drawer_interaction",
+            "refresh_desktop_appearance",
         ]),
     ))
     .expect("não foi possível gerar as permissões dos comandos do aplicativo");

@@ -9,9 +9,9 @@ const config = JSON.parse(
     "utf8",
   ),
 );
-const mainCapability = JSON.parse(
+const notchCapability = JSON.parse(
   await readFile(
-    new URL("../src-tauri/capabilities/main.json", import.meta.url),
+    new URL("../src-tauri/capabilities/notch.json", import.meta.url),
     "utf8",
   ),
 );
@@ -31,24 +31,54 @@ const workspaceEpochModule = await import(
   ).toString("base64")}`
 );
 
-test("a janela inicial carrega somente o frontend empacotado", () => {
+test("a janela única carrega somente o frontend empacotado", () => {
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
-  assert.equal(config.app.windows.length, 1);
-  assert.equal(config.app.windows[0].url, undefined);
+  assert.deepEqual(
+    config.app.windows.map((window) => window.label),
+    ["notch"],
+  );
+
+  for (const window of config.app.windows) {
+    assert.equal(window.url, undefined);
+  }
+
   assert.notEqual(config.app.withGlobalTauri, true);
 });
 
-test("o webview principal recebe somente os comandos locais declarados", () => {
-  assert.deepEqual(config.app.security.capabilities, ["main"]);
-  assert.deepEqual(mainCapability.windows, ["main"]);
-  assert.deepEqual(mainCapability.permissions, [
+test("a fita nasce recolhida e não recebe foco ao aparecer", () => {
+  const [notch] = config.app.windows;
+
+  assert.equal(notch.width, 28);
+  assert.equal(notch.height, 112);
+  assert.equal(notch.focus, false);
+  assert.equal(notch.focusable, true);
+  assert.equal(notch.acceptFirstMouse, true);
+  assert.equal(notch.transparent, true);
+  assert.equal(notch.alwaysOnTop, true);
+  assert.equal(notch.skipTaskbar, true);
+  assert.equal(notch.decorations, false);
+  assert.equal(notch.shadow, false);
+});
+
+test("o único webview local recebe a allowlist explícita de IPC", () => {
+  assert.deepEqual(config.app.security.capabilities, ["notch"]);
+  assert.equal(config.app.macOSPrivateApi, true);
+  assert.deepEqual(notchCapability.windows, ["notch"]);
+  assert.deepEqual(notchCapability.permissions, [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
     "allow-get-workspace-view",
     "allow-select-root",
     "allow-remove-root",
     "allow-get-repo-status",
     "allow-get-file-diff",
     "allow-get-git-capabilities",
+    "allow-toggle-drawer",
+    "allow-collapse-drawer",
+    "allow-get-desktop-capabilities",
+    "allow-set-drawer-interaction",
+    "allow-refresh-desktop-appearance",
   ]);
 });
 
@@ -59,6 +89,7 @@ test("a CSP permite somente o transporte IPC local necessário", () => {
       return [name, sources];
     }),
   );
+
   assert.deepEqual(directives.get("default-src"), ["'self'"]);
   assert.deepEqual(directives.get("script-src"), ["'self'"]);
   assert.deepEqual(directives.get("connect-src"), [
