@@ -12,4 +12,26 @@ tauri-build = { version = "=2.6.3", features = [] }
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151" }
-tauri = { version = "=2.11.5", features = [] }
+tauri = { version = "=2.11.5", features = ["macos-private-api"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.4"
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
+  "block2",
+  "NSAccessibility",
+  "NSAnimation",
+  "NSAnimationContext",
+  "NSAppearance",
+  "NSGlassEffectView",
+  "NSGraphics",
+  "NSResponder",
+  "NSScreen",
+  "NSView",
+  "NSWindow",
+  "NSWorkspace",
+  "objc2-core-foundation",
+  "objc2-quartz-core",
+] }
+block2 = "=0.6.2"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["NSGeometry"] }
+objc2-quartz-core = { version = "=0.3.2", default-features = false, features = ["CAMediaTimingFunction"] }

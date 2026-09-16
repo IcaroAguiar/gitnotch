@@ -1,11 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod desktop;
 mod git;
 
 use std::path::Path;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{Manager, State};
 
+use crate::desktop::DesktopState;
 use crate::git::{
     DiffPatch, FileGroupKind, GitCapabilities, GitError, GitReader, RepoStatusSnapshot,
 };
@@ -77,10 +79,31 @@ fn main() {
         .manage(AppState {
             git_reader: Mutex::new(None),
         })
+        .manage(Mutex::new(DesktopState::new()))
+        .setup(|app| {
+            desktop::place_notch(app.handle())?;
+            if let Err(error) = desktop::install_material(app.handle()) {
+                eprintln!("material nativo indisponível: {error}");
+            }
+            desktop::spawn_hover_watcher(app.handle().clone());
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == desktop::NOTCH_LABEL
+                && matches!(event, tauri::WindowEvent::Focused(false))
+            {
+                desktop::blur_drawer(window.app_handle());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             get_git_capabilities,
             get_repo_status,
-            get_file_diff
+            get_file_diff,
+            desktop::toggle_drawer,
+            desktop::collapse_drawer,
+            desktop::get_desktop_capabilities,
+            desktop::set_drawer_interaction,
+            desktop::refresh_desktop_appearance
         ])
         .run(tauri::generate_context!())
         .expect("Não foi possível iniciar o Git Notch");

@@ -4,7 +4,7 @@
 
 O aplicativo começa com uma janela Tauri convencional e uma tela de desenvolvimento. A estratégia de notch e drawer será validada separadamente, conforme a especificação. A tela inicial não lê repositórios nem solicita acesso ao filesystem.
 
-React e Vite produzem assets locais em dist. Rust incorpora esses assets no executável. Não há servidor HTTP, Node em produção, fontes remotas ou chamadas de API. A configuração CSP bloqueia conexões do frontend e nenhuma capability nativa é concedida nesta etapa. Comandos customizados também não estão registrados.
+React e Vite produzem assets locais em dist. Rust incorpora esses assets no executável. Não há servidor HTTP, Node em produção, fontes remotas ou chamadas de API. A configuração CSP restringe conexões do frontend aos recursos locais e ao transporte IPC do Tauri. Os comandos estreitos de desktop registrados em GN-01B não concedem leitura arbitrária de caminhos.
 
 O fluxo inicial usa builds pontuais. Nenhum servidor persistente de desenvolvimento é necessário. Um futuro fluxo com Vite persistente deve respeitar as regras de Portly do ambiente do mantenedor; não é pré-requisito de execução do aplicativo distribuído.
 
@@ -30,3 +30,37 @@ O ciclo de vida dos subprocessos protege contra esgotamento de recursos e deadlo
 Filtros externos (`clean` ou `process`) podem executar código arbitrário durante leituras do worktree. Conforme a seção 9.3 da especificação, implementou-se preflight que inspeciona a configuração efetiva (`filter.*.clean` e `filter.*.process`) e cruza com os atributos dos arquivos rastreados via `ls-files -z` e `check-attr -z filter --stdin`. Quando um filtro externo se aplica a arquivos rastreados, o repositório é classificado como `LimitedByExternalFilter`, recusando consultas de worktree que acionem o filtro e preservando o isolamento do produto.
 
 O parsing utiliza `status --porcelain=v2 --branch -z --no-ahead-behind --untracked-files=all --find-renames=50%`, tratando bytes e delimitadores NUL sem quebra por espaços ou tabs. Um mesmo arquivo com modificações staged e unstaged (`MM`) é categorizado em ambos os grupos. Repositórios `unborn` e `detached HEAD` são tratados explicitamente. Diffs de arquivos não rastreados são gerados por leitura direta delimitada, sem `git add` e sem criar arquivos temporários dentro do repositório.
+
+## Aba e gaveta nativas (GN-01B)
+
+A implementação usa **uma forma Tauri nativa** com o label `notch`, em vez de duas janelas/WebViews. Ela nasce como fita de 28 × 112 lógicos e, quando a intenção muda para `preview` ou `pinned`, cresce para até 960 × 600 lógicos. A fita fechada fica encostada à direita da área útil; a gaveta aberta flutua 24 px lógicos antes dela e recebe quatro cantos de 20 px. Em uma área menor, ela reduz largura e altura sem ultrapassar a área útil e mantém margens laterais equilibradas quando houver espaço. A escolha reduz o custo e a ambiguidade de foco de uma segunda janela, mas ainda requer aceite nativo para comportamento real de foco e hit-testing.
+
+A referência visual escolhida é a fita de borda do [Yoink](https://eternalstorms.at/yoink/mac/) e o acesso persistente do [SideNotes](https://www.apptorium.com/sidenotes). A decisão traduz somente a relação espacial: uma alça estreita encostada à direita que se torna uma gaveta flutuante para a esquerda, com uma alça compacta integrada. Não reaproveita código, assets ou comportamento desses produtos.
+
+A área útil vem primeiro de `current_monitor` da forma e usa o monitor primário apenas como fallback. Os retângulos de Tauri usam pixels físicos. No AppKit, o adaptador deriva o frame-alvo da moldura atual de `NSWindow` e da posição externa atual da própria forma, em vez de converter pela altura de `NSScreen.mainScreen`. Isso preserva origem negativa e escala do monitor atual no cálculo; o teste unitário cobre uma origem negativa com escala 2. A geometria real em monitores mistos continua pendente de validação nativa.
+
+O Rust é a fonte de verdade do estado da gaveta:
+
+- `DrawerIntent`: `closed`, `preview` e `pinned`;
+- `DrawerPhase`: `resting`, `opening` e `closing`;
+- geração monotônica para cada intenção que muda a apresentação.
+
+Uma intenção nova invalida a conclusão anterior. Fixar durante a abertura cria uma nova transição `pinned/opening`, então a conclusão da prévia não pode assentar o painel. O frontend aceita apenas snapshots de geração mais recente e, na mesma geração, recusa uma fase animada recebida depois de `resting`.
+
+A checagem da geração acontece no main thread imediatamente antes de foco, evento e frame nativos. O mutex permanece retido somente enquanto o efeito é enfileirado; a conclusão de `NSAnimationContext` agenda a atualização de fase depois dessa região crítica. Isso evita o temporizador estimado que existia antes e rejeita callbacks obsoletos, sem afirmar que a continuidade visual de uma interrupção já foi aceita em hardware.
+
+O hover abre após 120 ms de permanência e a prévia tolera 250 ms de saída. Durante a prévia, um corredor de hover limitado à altura original da fita cobre somente a lacuna até a borda direita; ele não altera a moldura ou o hit-testing da janela. A implementação atual abre em 380 ms com `cubic-bezier(.16,1,.3,1)` e recolhe em 240 ms com `cubic-bezier(.32,.72,0,1)`; o candidato anterior documentado em GN-01B usava 280/200 ms. Reduzir movimento entrega duração nativa zero e remove os atrasos CSS. `InteractionGuards` suspende o recolhimento automático durante seleção e durante captura real de ponteiro. O frontend espelha seleção, `gotpointercapture`/`lostpointercapture` e limpa a guarda em `pointerup`, cancelamento ou perda de foco; ele não captura artificialmente ponteiros de botões.
+
+No macOS, o material usa `NSGlassEffectView` público no estilo `Regular` dentro de uma raiz `NSView` com o frame visível da janela e `clipsToBounds` ativo. Em `closed/resting`, o vidro e seu host de conteúdo excedem 20 pontos à direita para manter a fita com lado direito reto; na abertura, o excedente anima a zero, expondo os quatro cantos do vidro. O conteúdo Tauri preserva sempre a largura visível da raiz, com reconciliação explícita de frame e `autoresizing` ao final da animação. O adaptador nunca guarda ponteiro Objective-C cru: localiza vidro por raiz de recorte e restaura o conteúdo original do host ao cair no fallback sólido. A leitura do raio ocorre no main thread sob o mutex imediatamente antes de instalar o efeito. A redução de transparência força sólido. No candidato atual, `NSAppearanceNameAqua` é aplicado somente ao `NSGlassEffectView` enquanto a forma está aberta ou fechando; ao voltar a `closed/resting`, o adaptador restaura `appearance = nil` para herdar o sistema. Não define aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua. A janela não ativa sombra nativa adicional, porque o candidato com sombra produziu artefatos pretos nos cantos inferiores. O preenchimento CSS mantém uma única fita DOM sobre o conteúdo; o estado vazio é intencional e não inventa repositórios, arquivos ou diffs.
+
+A capability declarada para a forma continua limitada a escutar o evento de estado. Os comandos registrados são `toggle_drawer`, `collapse_drawer`, `set_drawer_interaction`, `get_desktop_capabilities` e `refresh_desktop_appearance`; nenhum deles recebe paths de checkout.
+
+A QA nativa limitada atual no display primário confirmou uma janela, a fita de 28 × 112 encostada à borda, a gaveta de 960 × 600 a 24 px da direita, os quatro cantos do vidro abertos e a alça translúcida. `Esc`, clique na alça, Recolher e reabertura em ciclos foram observados. Ela não mede o viewport ou a largura do conteúdo diretamente nem valida hover/reversão com cursor físico, foco entre aplicativos, clique nos cantos arredondados e no aplicativo atrás, seleção e captura real de ponteiro, monitores mistos/desconexão ou preferências de acessibilidade. Os testes automatizados comprovam contratos e geometria, não esses cenários.
+
+Durante o morph entre os raios 12 e 20, o polling usa provisoriamente o maior raio nos quatro cantos quando a gaveta está aberta ou em transição e somente nos cantos esquerdos quando está fechada. Isso evita reter um clique onde o vidro pode já estar transparente, mas pode também ignorar um canto ainda visível no começo da abertura. A equivalência entre a camada apresentada pelo AppKit e o hit-testing não foi comprovada; não há alegação de click-through para outro aplicativo.
+
+## Drawer flutuante (GN-01B, 16/09/2026)
+
+O candidato baseado em `f321d35976d432f2fc7408004d658d60fb4668ee` escolhe uma única janela que se desprende 24 px da borda somente aberta, em vez de criar uma ponte visual ou uma segunda janela. O excedente do material muda de 20 para 0 pontos junto da transição, enquanto o conteúdo continua limitado ao recorte visível. Isso recupera os cantos direitos do vidro sem alargar o WebView.
+
+O experimento de `NSWindow.hasShadow` foi removido: no candidato anterior ele deixou uma borda e triângulos pretos nos cantos inferiores. O candidato de QA mantém `shadow: false` e não adiciona sombra CSS fora da janela. As evidências de candidatos anteriores permanecem em `docs/validation/GN-01B.md`; esta decisão não representa aceite visual do usuário.

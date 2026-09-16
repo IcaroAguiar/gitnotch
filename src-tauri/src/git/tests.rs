@@ -247,6 +247,7 @@ fn test_paths_with_spaces_and_special_pathspecs() {
     let repo = TestRepo::new("special-paths");
 
     repo.write_file("arquivo com espacos.txt", b"conteudo espacos");
+    #[cfg(not(target_os = "windows"))]
     repo.write_file("arquivo:com:dois:pontos.txt", b"conteudo colons");
     repo.write_file("[colchetes].txt", b"conteudo colchetes");
     repo.write_file("arquivo_acentuado_café.txt", b"conteudo cafe");
@@ -262,6 +263,7 @@ fn test_paths_with_spaces_and_special_pathspecs() {
     assert!(staged_paths.contains(&"[colchetes].txt"));
 
     let untracked_paths: Vec<&str> = status.untracked.iter().map(|f| f.path.as_str()).collect();
+    #[cfg(not(target_os = "windows"))]
     assert!(untracked_paths.contains(&"arquivo:com:dois:pontos.txt"));
     assert!(untracked_paths.contains(&"arquivo_acentuado_café.txt"));
 

@@ -1095,6 +1095,11 @@ dependencies = [
 name = "gitnotch"
 version = "0.1.0"
 dependencies = [
+ "block2",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
  "serde",
  "serde_json",
  "tauri",
@@ -1942,6 +1947,7 @@ dependencies = [
  "objc2",
  "objc2-core-foundation",
  "objc2-foundation",
+ "objc2-quartz-core",
 ]
 
 [[package]]

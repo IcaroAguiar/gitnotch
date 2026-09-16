@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "notch-state-events",
+  "description": "Permite à fita escutar o canal de estado usado nas transições da gaveta.",
+  "windows": ["notch"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}
