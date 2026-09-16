@@ -1,8 +1,8 @@
 # Validação da autorização de raízes e preferências (GN-03A)
 
-Ambiente local: macOS 26.6.2, Apple Silicon (arm64), Node 22.23.2, pnpm 10.32.1, Rust 1.98.1 e Git 2.50.1 (Apple Git-155).
+Ambiente das verificações automatizadas atuais: macOS 27.0 (26A428), Apple Silicon (arm64), Node 22.23.2, pnpm 10.32.1, Rust 1.98.1 e Git 2.54.0 (Apple Git-157).
 
-O roteiro nativo histórico partiu de `c7d9894`. A integração atual acrescenta código de autorização, IPC e gaveta; o SHA revisado será registrado junto da QA nativa dessa combinação.
+As verificações automatizadas desta integração referem-se a `0f2f99dd0979adaf585099e3a165024942a2fa9c`. O roteiro nativo histórico partiu de `c7d9894` em macOS 26.6.2; a QA de painel e gaveta da combinação atual permanece pendente.
 
 ## Verificações locais
 
@@ -12,6 +12,8 @@ O roteiro nativo histórico partiu de `c7d9894`. A integração atual acrescenta
   - `cargo fmt --check`: formatação conforme o projeto.
   - `cargo clippy --locked --all-targets -- -D warnings`: zero advertências.
   - `cargo test --locked`: 66 testes aprovados no macOS, cobrindo settings, workspace, IPC com `tauri::test`, geometria e estado da gaveta.
+- `pnpm exec tauri build --bundles app -- --locked`: passou e gerou `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável tem SHA-256 `3737064c29101e65fa64b1b58f956263f9080a223dd2feb7152b04aa0840bc63`.
+- `pnpm desktop:bundle -- --locked`: gerou o executável e o `.app`, mas terminou com erro na etapa posterior de DMG (`bundle_dmg.sh`). O resultado do bundle completo não é aprovado; logs locais ignorados: `artifacts/merge-pr4/logs/desktop-bundle.log` e `desktop-bundle-app.log`.
 
 O teste de diretório real com bytes não UTF-8 fica sob `cfg(target_os = "linux")`: APFS recusou criar essa fixture no macOS. Ele será exercitado pelo runner Linux; o teste local macOS cobre a fronteira de codificação usada antes da persistência.
 
