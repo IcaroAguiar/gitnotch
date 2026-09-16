@@ -118,3 +118,7 @@ O bundle acima foi aberto no macOS 27.0 no display primário. `artifacts/ribbon-
 `artifacts/ribbon-edge/after-geometry.jsonl` contém 718 amostras de 20 s para a janela `1087`. Há exatamente uma janela em todas as amostras. `x + width` permaneceu em `2560`; o centro permaneceu em `691` nos repousos e em `691` ou `691,5` durante arredondamentos intermediários. As dimensões observadas foram 28 × 112 recolhida e 960 × 600 aberta. A fita clicada abriu e recolheu; `Esc` e o controle Recolher também recolheram a gaveta.
 
 Essa evidência confirma a silhueta, o encaixe à direita e as transições medidas. Ela não mede `innerWidth` diretamente nem comprova hover com ponteiro físico, foco entre aplicativos, acessibilidade, monitores mistos ou click-through/hit-testing exato dos cantos esquerdos.
+
+## Preparação para merge em 16/09/2026
+
+A CI Windows falhava ao criar a fixture `arquivo:com:dois:pontos.txt` (`InvalidFilename`, código123). A criação e a asserção desse nome ficam restritas a plataformas que aceitam dois-pontos; espaços, colchetes, Unicode e diff literal continuam testados no Windows. O teste `git::tests::test_paths_with_spaces_and_special_pathspecs` passou localmente no macOS com `cargo test --manifest-path src-tauri/Cargo.toml git::tests::test_paths_with_spaces_and_special_pathspecs -- --exact`. O primeiro comando sem o módulo selecionou zero testes e não foi considerado validação. O comportamento do produto não mudou; o resultado Windows depende da nova CI.
