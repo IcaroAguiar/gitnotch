@@ -27,6 +27,8 @@ A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linu
 
 ## Candidato atual: refinamento líquido/material em 16/09/2026
 
+Código do bundle verificado: `f0b2412bb75fc379a9d41e2f83a58df1f7cea659`. O commit seguinte apenas identifica este SHA na documentação.
+
 - A abertura usa 380 ms com `cubic-bezier(.16,1,.3,1)`; o fechamento usa 240 ms com `cubic-bezier(.32,.72,0,1)`. O conteúdo abre após 120 ms e anima opacidade/deslocamento por 180 ms; movimento reduzido usa duração nativa zero e CSS de 1 ms.
 - `NSGlassEffectView` continua no estilo `Regular`. `NSAppearanceNameAqua` é aplicado somente ao vidro durante a forma aberta ou fechando; a conclusão lê o estado atual e restaura `appearance = nil` em `closed/resting`. Não há definição de aparência em `NSWindow` nem no sistema; as subviews do vidro podem herdar Aqua.
 - `pnpm check` passou (Biome, TypeScript e 7 testes Node); `pnpm rust:check` passou (rustfmt, Clippy com `-D warnings` e 29 testes Rust); o bundle `--bundles app -- --locked` passou. Logs: `artifacts/liquid-open/logs/pnpm-check.log`, `artifacts/liquid-open/logs/pnpm-rust-check.log` e `artifacts/liquid-open/logs/tauri-build-app.log`.
