@@ -1,14 +1,14 @@
 # Validação da aba e da gaveta nativas (GN-01B)
 
-**Estado:** implementação, verificações automatizadas, validação limitada do segundo candidato e smoke do binário final concluídos; aceite visual do produto e cenários sem automação permanecem pendentes.
+**Estado:** o refinamento de encaixe de 16/09/2026 tem verificações automatizadas, bundle e QA nativa limitada concluídos. Hover, foco externo, acessibilidade, monitores mistos, hit-testing exato e viewport medido diretamente permanecem pendentes. As evidências nativas abaixo do refinamento registram candidatos anteriores e não validam a forma atual.
 
-Revisão de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O build e o smoke foram executados sobre o conteúdo que compõe essa revisão; a atualização posterior deste registro altera somente documentação. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
+Revisão histórica de código verificada: `1b7c8a64f8d18ed9c3d467ef1e8d3bf20dddf399`. O refinamento atual partiu de `137de88d0d42fff635ed79f6f60692e06eff19eb`. Ambiente de build: macOS 27.0, Apple Silicon, Node 22.23.2, pnpm 10.32.1 e Rust 1.98.1. O ambiente observado possui displays físicos de 2560 × 1440 e 1920 × 1080; esta entrega não alterou preferências de monitor ou acessibilidade.
 
 ## Verificações automatizadas
 
 - `pnpm check` passou: Biome, TypeScript e 7 testes Node. Inclui o contrato da janela/capability e o descarte de snapshots atrasados, inclusive `Opening` da mesma geração após `Resting`. Log: `artifacts/premium-lateral/pnpm-check-final.log`.
 - `pnpm build` passou e produziu assets estáticos locais em `dist`.
-- `pnpm rust:check` passou: rustfmt, Clippy com `-D warnings` e 29 testes Rust. Os testes cobrem intenção/fase/geração, reversão durante abertura, guardas de interação, geometria limitada, quatro cantos arredondados, conversão AppKit com origem negativa/escala 2 e raio de material. Log: `artifacts/premium-lateral/rust-check-final.log`.
+- `pnpm rust:check` passou: rustfmt, Clippy com `-D warnings` e 29 testes Rust. Os testes cobrem intenção/fase/geração, reversão durante abertura, guardas de interação, geometria limitada, cantos arredondados apenas à esquerda, conversão AppKit com origem negativa/escala 2 e raio de material. Log: `artifacts/premium-lateral/rust-check-final.log`.
 - `pnpm exec tauri build --bundles app -- --locked` passou e produziu o aplicativo em `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável do bundle final tem SHA-256 `0cd439586e673de45fcf02f5039ad9b5dea305ca8e041f5b7ffd81e5ae495f84`. Log: `artifacts/premium-lateral/desktop-bundle-app-final.log`.
 - A tentativa de bundle padrão também produziu o executável e `.app`, mas falhou ao criar o DMG em `bundle_dmg.sh`. O DMG não foi recuperado nesta entrega; log: `artifacts/premium-lateral/desktop-bundle.log`.
 
@@ -18,11 +18,11 @@ A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linu
 
 ## Contrato implementado
 
-- Uma única forma nativa `notch` nasce em 16 × 96 e expande para até 960 × 600 lógicos, limitada pela área útil do monitor atual.
+- Uma única forma nativa `notch` nasce em 28 × 112 e expande para até 960 × 600 lógicos, limitada pela área útil do monitor atual e encostada pela direita.
 - Rust mantém `DrawerIntent` (`closed`, `preview`, `pinned`), `DrawerPhase` (`resting`, `opening`, `closing`) e geração monotônica.
 - A animação macOS usa `NSAnimationContext`; o callback de conclusão confirma a fase somente se a geração ainda for atual. Não há temporizador fixo de conclusão no macOS.
 - A checagem da geração e o início de foco/evento/frame ocorrem no main thread. O callback agenda a conclusão após liberar o mutex, evitando reentrância de duração zero.
-- Material usa `NSGlassEffectView` `Regular` como content view, com fallback sólido quando a classe não existe ou o sistema pede redução de transparência. Nenhum ponteiro Objective-C cru é retido.
+- Material usa `NSGlassEffectView` `Regular` dentro de uma raiz de recorte do tamanho da janela. O vidro e seu host excedem 20 pontos somente à direita, enquanto o conteúdo original preserva a largura visível da janela. O fallback sólido restaura esse conteúdo sem reter ponteiro Objective-C cru.
 - O frontend sincroniza preferências de movimento/transparência/esquema de cor, descarta snapshots atrasados e mantém a prévia aberta durante seleção ou captura real de ponteiro.
 
 ## Evidência nativa do segundo candidato
@@ -32,9 +32,9 @@ A execução remota de `341e113` encontrou quatro avisos elevados a erro no Linu
 - `artifacts/premium-lateral/native-candidate-geometry.jsonl` contém 1.070 amostras: a forma alternou 16 × 96 e 960 × 600, e `x + width` permaneceu 2.560 em todas as amostras. Esse registro prova geometria e colocação na borda direita; não mede FPS nem duração exata.
 - Uma inspeção manual da região real da tela confirmou conteúdo de outro aplicativo visível e desfocado sob a forma. A PNG isolada da janela não contém esse fundo e não foi usada para inferir opacidade. Não há evidência publicada da tela inteira porque ela continha atividade pessoal.
 
-## Smoke nativo do bundle final
+## Smoke nativo anterior do bundle
 
-- Após a correção que lê o raio do material no main thread sob o mutex, o bundle SHA-256 `0cd439586e673de45fcf02f5039ad9b5dea305ca8e041f5b7ffd81e5ae495f84` abriu, fixou, recolheu por `Esc`, recolheu pelo controle e abriu novamente.
+- Antes do refinamento de encaixe, o bundle SHA-256 `0cd439586e673de45fcf02f5039ad9b5dea305ca8e041f5b7ffd81e5ae495f84` abriu, fixou, recolheu por `Esc`, recolheu pelo controle e abriu novamente.
 - A janela observada tinha id 17.450, posição `x=1.600`, `y=391` e alvo 960 × 600 no display primário. `artifacts/premium-lateral/native-final-cycle.mov` e `artifacts/premium-lateral/native-final-open.png` registram o smoke. `artifacts/premium-lateral/native-final-demo.mp4` contém os primeiros sete segundos do vídeo, sem mudança de velocidade.
 - O smoke não demonstra fluxo com dados reais, aceite visual do produto, hover com ponteiro físico, foco entre aplicativos, seleção/captura de ponteiro, cantos transparentes, preferências de acessibilidade ou segundo monitor.
 
@@ -53,17 +53,16 @@ A validação final precisa cobrir:
 1. prévia por hover, sua tolerância de saída e reversão com ponteiro físico;
 2. foco da fita e da gaveta entre aplicativos, além da navegação por teclado;
 3. chegada do conteúdo durante todo o redimensionamento; a primeira captura do segundo candidato não mostrou ribbon residual, mas não cobre todos os frames;
-4. rail/notch escuro na borda direita e aceite visual contra a referência;
-5. clique nas bordas arredondadas e no aplicativo atrás;
-6. seleção e captura real de ponteiro sem recolhimento automático;
-7. interrupção abrir/recolher e preferências de movimento reduzido ou transparência reduzida;
-8. display secundário, escalas distintas e desconexão de monitor;
-9. uso sustentado de CPU/memória e orçamento de recursos.
+4. clique exato nos cantos arredondados esquerdos e no aplicativo atrás;
+5. seleção e captura real de ponteiro sem recolhimento automático;
+6. interrupção abrir/recolher e preferências de movimento reduzido ou transparência reduzida;
+7. display secundário, escalas distintas e desconexão de monitor;
+8. uso sustentado de CPU/memória e orçamento de recursos.
 
 ## Limites conhecidos
 
 - `NSView.hitTest` ou `pointer-events: none` não provam que um clique será entregue a outro aplicativo. Não há alegação de click-through externo sem esse roteiro nativo.
-- Durante o morph de raio 8 ↔ 20, o polling usa raio 20 de forma conservadora para não capturar pixels que podem já estar transparentes. Na abertura, isso também pode rejeitar um canto ainda visível; equivalência exata entre apresentação e hit-testing permanece pendente de prova nativa.
+- Durante o morph de raio 12 ↔ 20, o polling usa raio 20 de forma conservadora apenas nos cantos esquerdos, para não capturar pixels que podem já estar transparentes. Na abertura, isso também pode rejeitar um canto esquerdo ainda visível; equivalência exata entre apresentação e hit-testing permanece pendente de prova nativa.
 - O driver disponível não oferece movimento puro de mouse documentado, portanto timing de hover/reversão exige observação manual ou evidência nativa adequada.
 - Material, foco, hit-testing, monitores mistos e acessibilidade não são comprovados por testes unitários, build ou screenshots isolados.
 
@@ -71,9 +70,27 @@ A validação final precisa cobrir:
 
 ```sh
 # Rust do rust-toolchain.toml e pnpm devem estar no PATH.
+source .local/use-rust.sh
 export DEVELOPER_DIR=/Library/Developer/CommandLineTools
 pnpm check
 pnpm build
 pnpm rust:check
 pnpm exec tauri build --bundles app -- --locked
 ```
+
+## Refinamento de encaixe da fita em 16/09/2026
+
+O diff atual parte de `137de88d0d42fff635ed79f6f60692e06eff19eb`. A fita mede 28 × 112 lógicos, mantém seu centro vertical e sua borda direita em `work.x + work.width`. A folha aberta continua na mesma `NSWindow`, também presa à direita e limitada a 960 × 600 sem avançar para outro monitor. A superfície e o hit-testing arredondam apenas os cantos esquerdos.
+
+No macOS, uma raiz `NSView` do tamanho da janela recorta um `NSGlassEffectView` 20 pontos mais largo à direita. O `contentView` do vidro é um host de mesma largura, que contém o conteúdo Tauri na largura da janela com margem direita fixa de 20 pontos. A fita DOM fica acima de `drawer-content` em `closed`, `preview`, `pinned` e `closing`; ela usa um glyph Git discreto, rótulo dinâmico e `aria-pressed` somente quando fixada. O trilho SVG e a regra de container que ocultava a fita foram removidos.
+
+- `pnpm check` passou. Log: `artifacts/ribbon-edge/logs/pnpm-check.log`.
+- `pnpm build` passou. Log: `artifacts/ribbon-edge/logs/pnpm-build.log`.
+- `pnpm rust:check` passou com 29 testes. Log: `artifacts/ribbon-edge/logs/pnpm-rust-check.log`.
+- `pnpm exec tauri build --bundles app -- --locked` passou e produziu `src-tauri/target/release/bundle/macos/Git Notch.app`. O executável `Contents/MacOS/gitnotch` tem SHA-256 `7654e147a54b3a9b93a407b7874569a98ab0d476ea9127122b039600f3d48fc0`. Log: `artifacts/ribbon-edge/logs/tauri-build-app.log`.
+
+O bundle acima foi aberto no macOS 27.0 no display primário. `artifacts/ribbon-edge/native-cycle.mov` registra 20 s em 960 × 600 e `artifacts/ribbon-edge/native-demo.mp4` contém o trecho entre 8 s e 20 s, sem aceleração, mostrando fechar e reabrir. Os frames 5 e 13 foram inspecionados nos estados aberto e recolhido. As capturas `artifacts/ribbon-edge/after-open.png` e `artifacts/ribbon-edge/after-closed.png` mostram a fita única, a ausência do trilho e a borda direita reta sem folga. A captura isolada preserva a área externa preta e não expõe o desktop.
+
+`artifacts/ribbon-edge/after-geometry.jsonl` contém 718 amostras de 20 s para a janela `1087`. Há exatamente uma janela em todas as amostras. `x + width` permaneceu em `2560`; o centro permaneceu em `691` nos repousos e em `691` ou `691,5` durante arredondamentos intermediários. As dimensões observadas foram 28 × 112 recolhida e 960 × 600 aberta. A fita clicada abriu e recolheu; `Esc` e o controle Recolher também recolheram a gaveta.
+
+Essa evidência confirma a silhueta, o encaixe à direita e as transições medidas. Ela não mede `innerWidth` diretamente nem comprova hover com ponteiro físico, foco entre aplicativos, acessibilidade, monitores mistos ou click-through/hit-testing exato dos cantos esquerdos.

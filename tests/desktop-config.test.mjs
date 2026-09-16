@@ -27,8 +27,8 @@ test("a janela única carrega somente o frontend empacotado", () => {
 test("a fita nasce recolhida e não recebe foco ao aparecer", () => {
   const [notch] = config.app.windows;
 
-  assert.equal(notch.width, 16);
-  assert.equal(notch.height, 96);
+  assert.equal(notch.width, 28);
+  assert.equal(notch.height, 112);
   assert.equal(notch.focus, false);
   assert.equal(notch.focusable, true);
   assert.equal(notch.acceptFirstMouse, true);

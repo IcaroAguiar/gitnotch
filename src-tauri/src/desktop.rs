@@ -10,8 +10,8 @@ mod native;
 pub const NOTCH_LABEL: &str = "notch";
 pub const DRAWER_STATE_EVENT: &str = "gitnotch://drawer-state";
 
-const RIBBON_WIDTH: u32 = 16;
-const RIBBON_HEIGHT: u32 = 96;
+const RIBBON_WIDTH: u32 = 28;
+const RIBBON_HEIGHT: u32 = 112;
 const DRAWER_WIDTH: u32 = 960;
 const DRAWER_MAX_HEIGHT: u32 = 600;
 const DRAWER_HORIZONTAL_MARGIN: u32 = 24;
@@ -24,7 +24,7 @@ const HOVER_DWELL: Duration = Duration::from_millis(120);
 const HOVER_EXIT_TOLERANCE: Duration = Duration::from_millis(250);
 const HOVER_POLL: Duration = Duration::from_millis(60);
 const HOVER_MARGIN: u32 = 12;
-const RIBBON_RADIUS: f64 = 8.0;
+const RIBBON_RADIUS: f64 = 12.0;
 const DRAWER_RADIUS: f64 = 20.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -374,7 +374,7 @@ pub fn spawn_hover_watcher(app: AppHandle) {
             };
 
             let corner = contains(form, point.0, point.1)
-                && outside_rounded_corners(form, radius * scale_of(&app), point.0, point.1);
+                && outside_left_rounded_corners(form, radius * scale_of(&app), point.0, point.1);
             if ignoring != Some(corner)
                 && let Some(window) = app.get_webview_window(NOTCH_LABEL)
             {
@@ -608,23 +608,19 @@ fn contains(rect: Rect, x: i32, y: i32) -> bool {
     x >= rect.x && x < rect.x + rect.width as i32 && y >= rect.y && y < rect.y + rect.height as i32
 }
 
-fn outside_rounded_corners(rect: Rect, radius: f64, x: i32, y: i32) -> bool {
+fn outside_left_rounded_corners(rect: Rect, radius: f64, x: i32, y: i32) -> bool {
     let radius = radius
         .min(f64::from(rect.width) / 2.0)
         .min(f64::from(rect.height) / 2.0);
     let px = f64::from(x);
     let py = f64::from(y);
     let left = f64::from(rect.x);
-    let right = f64::from(rect.x + rect.width as i32);
     let top = f64::from(rect.y);
     let bottom = f64::from(rect.y + rect.height as i32);
-    let center_x = if px < left + radius {
-        left + radius
-    } else if px >= right - radius {
-        right - radius
-    } else {
+    if px >= left + radius {
         return false;
-    };
+    }
+    let center_x = left + radius;
     let center_y = if py < top + radius {
         top + radius
     } else if py >= bottom - radius {
@@ -1113,7 +1109,7 @@ mod tests {
     }
 
     #[test]
-    fn cantos_arredondados_de_todos_os_lados_nao_aceitam_ponteiro() {
+    fn apenas_cantos_esquerdos_arredondados_ignoram_o_ponteiro() {
         let rect = Rect {
             x: 100,
             y: 200,
@@ -1121,12 +1117,11 @@ mod tests {
             height: 80,
         };
 
-        assert!(outside_rounded_corners(rect, 20.0, 100, 200));
-        assert!(outside_rounded_corners(rect, 20.0, 219, 200));
-        assert!(outside_rounded_corners(rect, 20.0, 100, 279));
-        assert!(outside_rounded_corners(rect, 20.0, 219, 279));
-        assert!(!outside_rounded_corners(rect, 20.0, 120, 200));
-        assert!(!outside_rounded_corners(rect, 20.0, 160, 200));
+        assert!(outside_left_rounded_corners(rect, 20.0, 100, 200));
+        assert!(outside_left_rounded_corners(rect, 20.0, 100, 279));
+        assert!(!outside_left_rounded_corners(rect, 20.0, 120, 200));
+        assert!(!outside_left_rounded_corners(rect, 20.0, 219, 200));
+        assert!(!outside_left_rounded_corners(rect, 20.0, 219, 279));
     }
 
     #[test]

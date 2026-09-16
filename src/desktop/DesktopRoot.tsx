@@ -218,6 +218,12 @@ export function DesktopRoot() {
 
   const open = view.intent !== "closed";
   const interactionHandlers = useInteractionGuards(open, contentRef);
+  const ribbonLabel =
+    view.intent === "pinned"
+      ? "Recolher a gaveta do Git Notch"
+      : view.intent === "preview"
+        ? "Fixar a prévia da gaveta do Git Notch"
+        : "Abrir e fixar a gaveta do Git Notch";
 
   const toggleDrawer = useCallback(() => {
     void invoke<DesktopView>("toggle_drawer")
@@ -231,10 +237,20 @@ export function DesktopRoot() {
         className="ribbon"
         type="button"
         onClick={toggleDrawer}
-        hidden={open}
-        aria-label="Abrir e fixar a gaveta do Git Notch"
+        aria-label={ribbonLabel}
+        aria-pressed={view.intent === "pinned"}
       >
-        <span className="ribbon-mark" aria-hidden="true" />
+        <svg
+          className="ribbon-glyph"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M5 3v10m0-5h5m0 0V5" />
+          <circle cx="5" cy="3" r="1.25" />
+          <circle cx="5" cy="13" r="1.25" />
+          <circle cx="10" cy="5" r="1.25" />
+        </svg>
       </button>
       <section
         ref={contentRef}
@@ -243,13 +259,6 @@ export function DesktopRoot() {
         aria-label="Gaveta do Git Notch"
         {...interactionHandlers}
       >
-        <div className="drawer-rail" aria-hidden="true">
-          <svg viewBox="0 0 20 96" focusable="false">
-            <title>Detalhe da gaveta</title>
-            <path d="M10 0v38c0 7.6 4.2 11.4 10 11.4M10 96V58.6c0-7.6 4.2-11.4 10-11.4" />
-            <circle cx="10" cy="48" r="2" />
-          </svg>
-        </div>
         <header className="drawer-header">
           <div>
             <span className="wordmark">Git Notch</span>

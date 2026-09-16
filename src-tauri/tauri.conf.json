@@ -13,8 +13,8 @@
       {
         "label": "notch",
         "title": "Git Notch",
-        "width": 16,
-        "height": 96,
+        "width": 28,
+        "height": 112,
         "resizable": false,
         "maximizable": false,
         "minimizable": false,

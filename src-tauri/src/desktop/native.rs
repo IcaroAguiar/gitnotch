@@ -10,7 +10,7 @@ use objc2::rc::Retained;
 use objc2::runtime::AnyClass;
 use objc2_app_kit::{
     NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions,
-    NSGlassEffectView, NSGlassEffectViewStyle, NSWindow, NSWorkspace,
+    NSGlassEffectView, NSGlassEffectViewStyle, NSView, NSWindow, NSWorkspace,
 };
 use objc2_foundation::{NSPoint, NSRect, NSSize};
 use objc2_quartz_core::CAMediaTimingFunction;
@@ -18,8 +18,7 @@ use tauri::{AppHandle, Manager, PhysicalPosition, WebviewWindow};
 
 use super::{DesktopView, DrawerIntent, DrawerPhase, FormState, Rect};
 
-const RADIUS_CLOSED: f64 = 8.0;
-const RADIUS_OPEN: f64 = 20.0;
+const GLASS_RIGHT_OVERSCAN: f64 = super::DRAWER_RADIUS;
 
 static MATERIAL: Mutex<&'static str> = Mutex::new("solid");
 
@@ -50,7 +49,7 @@ pub fn refresh_material(app: &AppHandle) -> Result<&'static str, String> {
         if AnyClass::get(c"NSGlassEffectView").is_none()
             || NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
         {
-            clear_material(&ns);
+            clear_material(&ns)?;
             return Ok("solid");
         }
 
@@ -79,37 +78,80 @@ fn install_material(ns: &NSWindow, mtm: MainThreadMarker, radius: f64) -> Result
     let content = ns
         .contentView()
         .ok_or_else(|| "contentView indisponível".to_string())?;
+    let visible_bounds = content.bounds();
+    let clip = NSView::initWithFrame(mtm.alloc(), visible_bounds);
+    clip.setClipsToBounds(true);
+    clip.setAutoresizingMask(
+        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
+    );
+
     let glass = NSGlassEffectView::new(mtm);
     glass.setStyle(NSGlassEffectViewStyle::Regular);
-    glass.setFrame(content.bounds());
+    glass.setFrame(NSRect::new(
+        visible_bounds.origin,
+        NSSize::new(
+            visible_bounds.size.width + GLASS_RIGHT_OVERSCAN,
+            visible_bounds.size.height,
+        ),
+    ));
     glass.setCornerRadius(radius);
     glass.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
+    let host = NSView::initWithFrame(mtm.alloc(), glass.bounds());
+    host.setAutoresizingMask(
+        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
+    );
+    content.setFrame(visible_bounds);
     content.setAutoresizingMask(
         NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
     );
-    glass.setContentView(Some(&content));
-    ns.setContentView(Some(&glass));
+    ns.setContentView(None);
+    host.addSubview(&content);
+    glass.setContentView(Some(&host));
+    clip.addSubview(&glass);
+    ns.setContentView(Some(&clip));
     Ok(())
 }
 
-fn clear_material(ns: &NSWindow) {
-    if let Some(glass) = glass_view(ns)
-        && let Some(content) = glass.contentView()
-    {
-        ns.setContentView(Some(&content));
-    }
+fn clear_material(ns: &NSWindow) -> Result<(), String> {
+    let Some(glass) = glass_view(ns) else {
+        return Ok(());
+    };
+    let clip = ns
+        .contentView()
+        .ok_or_else(|| "raiz de recorte indisponível".to_string())?;
+    let host = glass
+        .contentView()
+        .ok_or_else(|| "host do material indisponível".to_string())?;
+    let content = host
+        .subviews()
+        .firstObject()
+        .ok_or_else(|| "conteúdo do material indisponível".to_string())?;
+
+    content.removeFromSuperview();
+    glass.setContentView(None);
+    content.setFrame(clip.bounds());
+    content.setAutoresizingMask(
+        NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable,
+    );
+    ns.setContentView(Some(&content));
+    Ok(())
 }
 
 fn glass_view(window: &NSWindow) -> Option<Retained<NSGlassEffectView>> {
-    window.contentView()?.downcast::<NSGlassEffectView>().ok()
+    window
+        .contentView()?
+        .subviews()
+        .firstObject()?
+        .downcast::<NSGlassEffectView>()
+        .ok()
 }
 
 fn material_radius(view: DesktopView) -> f64 {
     match (view.intent, view.phase) {
-        (DrawerIntent::Closed, DrawerPhase::Resting) => RADIUS_CLOSED,
-        _ => RADIUS_OPEN,
+        (DrawerIntent::Closed, DrawerPhase::Resting) => super::RIBBON_RADIUS,
+        _ => super::DRAWER_RADIUS,
     }
 }
 
@@ -172,8 +214,8 @@ pub fn animate_form(
         let current_position = window.outer_position().map_err(|error| error.to_string())?;
         let frame = target_frame_from_current(ns.frame(), current_position, target, scale);
         let radius = match form {
-            FormState::Open => RADIUS_OPEN,
-            FormState::Closed => RADIUS_CLOSED,
+            FormState::Open => super::DRAWER_RADIUS,
+            FormState::Closed => super::RIBBON_RADIUS,
         };
         let timing = match form {
             FormState::Open => CAMediaTimingFunction::functionWithControlPoints(0.2, 0.8, 0.2, 1.0),
@@ -294,7 +336,7 @@ mod tests {
                 phase: DrawerPhase::Resting,
                 generation: 1,
             }),
-            RADIUS_CLOSED
+            super::super::RIBBON_RADIUS
         );
         assert_eq!(
             material_radius(DesktopView {
@@ -302,7 +344,7 @@ mod tests {
                 phase: DrawerPhase::Opening,
                 generation: 2,
             }),
-            RADIUS_OPEN
+            super::super::DRAWER_RADIUS
         );
     }
 }

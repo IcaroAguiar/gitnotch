@@ -10,7 +10,10 @@
   --motion-close: 200ms;
   --ease-open: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-close: cubic-bezier(0.4, 0, 1, 1);
-  --radius-closed: 8px;
+  --ribbon-width: 28px;
+  --ribbon-height: 112px;
+  --ribbon-gutter: calc(var(--ribbon-width) + 20px);
+  --radius-closed: 12px;
   --radius-open: 20px;
   --surface-solid: #202325;
   --surface-solid-hover: #292e31;
@@ -49,14 +52,12 @@ button {
   position: relative;
   height: 100%;
   overflow: hidden;
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-closed);
+  border: 0;
+  border-radius: var(--radius-closed) 0 0 var(--radius-closed);
   background: var(--surface-solid);
-  container-type: inline-size;
   isolation: isolate;
   transition:
     background-color var(--motion-dwell) var(--ease-open),
-    border-color var(--motion-dwell) var(--ease-open),
     border-radius var(--motion-open) var(--ease-open);
 }
 
@@ -72,13 +73,28 @@ button {
   opacity: 0.38;
 }
 
+.surface::after {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  border: 1px solid var(--surface-border);
+  border-right: 0;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  transition: border-color var(--motion-dwell) var(--ease-open);
+}
+
 html[data-material="glass"] .surface {
   background: var(--surface-glass);
 }
 
 html[data-intent="closed"] .surface:hover {
-  border-color: var(--surface-border-strong);
   background: var(--surface-solid-hover);
+}
+
+html[data-intent="closed"] .surface:hover::after {
+  border-color: var(--surface-border-strong);
 }
 
 html[data-intent="closed"][data-material="glass"] .surface:hover {
@@ -87,23 +103,33 @@ html[data-intent="closed"][data-material="glass"] .surface:hover {
 
 html[data-intent="preview"] .surface,
 html[data-intent="pinned"] .surface {
-  border-radius: var(--radius-open);
+  border-radius: var(--radius-open) 0 0 var(--radius-open);
 }
 
 .ribbon {
   position: absolute;
-  inset: 0;
+  z-index: 2;
+  top: 50%;
+  right: 0;
   display: grid;
+  width: var(--ribbon-width);
+  height: var(--ribbon-height);
   place-items: center;
   padding: 0;
   border: 0;
+  border-radius: var(--radius-closed) 0 0 var(--radius-closed);
   background: transparent;
   color: inherit;
   cursor: default;
+  transform: translateY(-50%);
+  transition:
+    background-color var(--motion-dwell) var(--ease-open),
+    color var(--motion-dwell) var(--ease-open);
 }
 
-.ribbon[hidden] {
-  display: none;
+.ribbon:hover,
+.ribbon:focus-visible {
+  background: rgb(255 255 255 / 7%);
 }
 
 .ribbon:focus-visible,
@@ -113,21 +139,35 @@ html[data-intent="pinned"] .surface {
   outline-offset: -3px;
 }
 
-.ribbon-mark {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px rgb(168 209 238 / 55%);
+.ribbon[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ribbon-glyph {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  opacity: 0.72;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+}
+
+.ribbon-glyph circle {
+  fill: currentcolor;
+  stroke: none;
 }
 
 .drawer-content {
   position: absolute;
+  z-index: 1;
   inset: 0;
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding-right: 28px;
+  padding-right: var(--ribbon-gutter);
   opacity: 0;
   pointer-events: none;
   transform: translateX(12px);
@@ -153,49 +193,6 @@ html[data-phase="closing"] .drawer-content {
   transition:
     opacity 90ms var(--ease-close),
     transform 90ms var(--ease-close);
-}
-
-.drawer-rail {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  width: 44px;
-  place-items: center;
-  border-left: 1px solid rgb(255 255 255 / 6%);
-  background: linear-gradient(180deg, rgb(255 255 255 / 7%), transparent 34%);
-}
-
-.drawer-rail::before {
-  position: absolute;
-  top: calc(50% - 48px);
-  right: 0;
-  width: 17px;
-  height: 96px;
-  border: 1px solid rgb(255 255 255 / 7%);
-  border-right: 0;
-  border-radius: 12px 0 0 12px;
-  background: rgb(7 10 11 / 38%);
-  box-shadow: -8px 0 24px rgb(0 0 0 / 12%);
-  content: "";
-}
-
-.drawer-rail svg {
-  position: relative;
-  z-index: 1;
-  width: 20px;
-  height: 96px;
-  overflow: visible;
-  stroke: rgb(232 238 237 / 48%);
-  stroke-linecap: round;
-  stroke-width: 1;
-  fill: none;
-}
-
-.drawer-rail circle {
-  fill: var(--accent);
-  stroke: none;
 }
 
 .drawer-header {
@@ -294,18 +291,6 @@ html[data-phase="closing"] .drawer-content {
   line-height: 1.1;
 }
 
-@container (min-width: 380px) {
-  .ribbon {
-    display: none;
-  }
-
-  .drawer-content {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
-  }
-}
-
 .drawer-empty > p:last-child {
   max-width: 31ch;
   margin: 14px 0 0;
@@ -322,6 +307,7 @@ html[data-phase="closing"] .drawer-content {
 
 @media (prefers-reduced-motion: reduce) {
   .surface,
+  .surface::after,
   .drawer-content,
   html[data-intent="preview"] .drawer-content,
   html[data-intent="pinned"] .drawer-content,
@@ -366,21 +352,6 @@ html[data-phase="closing"] .drawer-content {
 
   .drawer-header {
     border-bottom-color: rgb(0 0 0 / 8%);
-  }
-
-  .drawer-rail {
-    border-left-color: rgb(0 0 0 / 7%);
-    background: linear-gradient(180deg, rgb(0 0 0 / 3%), transparent 34%);
-  }
-
-  .drawer-rail::before {
-    border-color: rgb(0 0 0 / 8%);
-    background: rgb(76 92 86 / 20%);
-    box-shadow: -8px 0 24px rgb(0 0 0 / 7%);
-  }
-
-  .drawer-rail svg {
-    stroke: rgb(44 67 59 / 46%);
   }
 
   .drawer-pin,
