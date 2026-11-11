@@ -5,17 +5,17 @@ As versões abaixo são as resolvidas para o aplicativo. Consulte os lockfiles p
 | Dependência | Versão | Licença declarada | Uso |
 |---|---|---|---|
 | @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT | Comandos IPC e label da janela |
-| React e React DOM | 19.2.8 | MIT | Interface |
+| React e React DOM | 19.3.1 | MIT | Interface |
 | Tauri | 2.11.5 | MIT ou Apache-2.0 | Janela e runtime nativo |
 | tauri-build | 2.6.3 | MIT ou Apache-2.0 | Build Rust |
 | Tauri CLI | 2.11.4 | MIT ou Apache-2.0 | Ferramenta de build |
-| Vite | 8.2.2 | MIT | Build frontend |
-| Plugin React do Vite | 6.1.0 | MIT | Build frontend |
+| Vite | 8.3.5 | MIT | Build frontend |
+| Plugin React do Vite | 6.2.1 | MIT | Build frontend |
 | TypeScript | 7.0.2 | Apache-2.0 | Verificação de tipos |
-| Biome | 2.5.10 | MIT ou Apache-2.0 | Lint e formatação |
+| Biome | 2.6.4 | MIT ou Apache-2.0 | Lint e formatação |
 | Tipos Node | 22.20.1 | MIT | Desenvolvimento |
-| Tipos React | 19.2.18 | MIT | Desenvolvimento |
-| Tipos React DOM | 19.2.5 | MIT | Desenvolvimento |
+| Tipos React | 19.3.0 | MIT | Desenvolvimento |
+| Tipos React DOM | 19.3.0 | MIT | Desenvolvimento |
 | serde | 1.0.229 | MIT ou Apache-2.0 | Serialização de tipos e modelos de domínio |
 | serde_json | 1.0.151 | MIT ou Apache-2.0 | Serialização de dados para IPC |
 | tauri-plugin-dialog | 2.7.3 | Apache-2.0 ou MIT | Seletor nativo de pastas |
