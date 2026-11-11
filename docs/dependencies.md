@@ -4,11 +4,11 @@ As versões abaixo são as resolvidas para o aplicativo. Consulte os lockfiles p
 
 | Dependência | Versão | Licença declarada | Uso |
 |---|---|---|---|
-| @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | Comandos IPC e label da janela |
+| @tauri-apps/api | 2.11.1 | Apache-2.0 OR MIT | Comandos IPC e label da janela |
 | React e React DOM | 19.3.1 | MIT | Interface |
 | Tauri | 2.11.5 | MIT ou Apache-2.0 | Janela e runtime nativo |
 | tauri-build | 2.6.3 | MIT ou Apache-2.0 | Build Rust |
-| Tauri CLI | 2.12.4 | MIT ou Apache-2.0 | Ferramenta de build |
+| Tauri CLI | 2.11.4 | MIT ou Apache-2.0 | Ferramenta de build |
 | Vite | 8.3.5 | MIT | Build frontend |
 | Plugin React do Vite | 6.2.1 | MIT | Build frontend |
 | TypeScript | 7.0.2 | Apache-2.0 | Verificação de tipos |
