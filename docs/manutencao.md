@@ -10,7 +10,7 @@ Este fluxo orienta o trabalho do mantenedor com agentes nas tarefas atribuídas.
 4. Registre comandos reproduzíveis e resultados. Abra uma PR usando o template.
 5. Aguarde revisão do mantenedor. Não habilite auto-merge por conta própria.
 
-Os comandos de build e verificação estão no [README](../README.md). A CI executa os checks e compila nos ambientes configurados. Não adicione checks que apenas retornam sucesso sem verificar algo.
+Os comandos de build e verificação estão no [README](../README.md). Cada PR executa o job `verify`, com orçamento de 300 segundos. PRs de forks precisam do rótulo `run-ci` e de um push ou reabertura posterior; adicionar o rótulo não dispara `verify`. O workflow `full-ci.yml` compila nos três sistemas com `run-full-ci`, push para `main` ou execução manual. Não adicione checks que apenas retornam sucesso sem verificar algo.
 
 ## Mantenha o repositório enxuto
 
