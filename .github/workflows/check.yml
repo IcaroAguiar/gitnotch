@@ -2,19 +2,19 @@ name: Checks
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     if: >-
-      github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'run-ci')) && (github.event.action != 'labeled' || github.event.label.name == 'run-ci')
+      github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'run-ci'))
     permissions:
       contents: read
     runs-on: ${{ fromJSON(vars.ACTIONS_RUNNER_LABELS_CI || '["ubuntu-latest"]') }}
@@ -45,14 +45,28 @@ jobs:
           if git diff --name-only "$BASE_SHA" HEAD -- src-tauri/ | grep -q .; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Install Rust toolchain
+        if: steps.rust.outputs.changed == 'true'
+        working-directory: src-tauri
+        shell: bash
+        run: rustup show active-toolchain
+      - name: Rust format check
+        if: steps.rust.outputs.changed == 'true'
+        working-directory: src-tauri
+        run: cargo fmt --check
+      - name: Cache Rust
+        if: steps.rust.outputs.changed == 'true'
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+        with:
+          workspaces: src-tauri -> target
       - name: Check Rust
         if: steps.rust.outputs.changed == 'true'
         working-directory: src-tauri
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
-          cargo fmt --check
-          cargo check --locked
+          mkdir -p ../dist
+          cargo clippy --locked --all-targets -- -D warnings
       - name: Work budget (300 seconds)
         if: always()
         shell: bash
